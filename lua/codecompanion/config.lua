@@ -1,7 +1,6 @@
 -- lua/codecompanion/config.lua
 -- This file defines CodeCompanion's default configuration.
--- MODIFIED: Adapters table refactored to include ONLY the 'ollama' adapter,
--- and crucially, it directly requires the 'ollama' adapter module to ensure a table is provided.
+-- IMPORTANT: Reverted 'ollama' adapter definition back to a string.
 
 local providers = require("codecompanion.providers")
 local ui_utils = require("codecompanion.utils.ui")
@@ -17,10 +16,13 @@ local constants = {
 local defaults = {
   adapters = {
     -- LLMs -------------------------------------------------------------------
-    -- IMPORTANT CHANGE: Directly require the ollama adapter here as a table.
-    -- This ensures that `config.adapters.ollama` always evaluates to a table,
-    -- preventing the "expected table, got string" error during internal merges.
-    ollama = require("codecompanion.adapters.ollama"),
+    -- REVERTED: 'ollama' is now defined as a string.
+    -- The actual 'codecompanion.adapters.ollama' module will be required
+    -- dynamically by CodeCompanion's internal 'resolve' function when needed.
+    ollama = "ollama",
+    -- Non LLMs (keeping these as strings for now for consistency with original)
+    jina = "jina",
+    tavily = "tavily",
     -- OPTIONS ----------------------------------------------------------------
     opts = {
       allow_insecure = false, -- Allow insecure connections?
@@ -34,7 +36,8 @@ local defaults = {
   strategies = {
     -- CHAT STRATEGY ----------------------------------------------------------
     chat = {
-      adapter = "copilot", -- Default adapter, overridden by your plugin config
+      -- This adapter will be resolved from the 'adapters' table based on its string name.
+      adapter = "ollama", -- Set to ollama directly
       roles = {
         ---The header name for the LLM's messages
         ---@type string|fun(adapter: CodeCompanion.Adapter): string
@@ -399,7 +402,7 @@ local defaults = {
     },
     -- INLINE STRATEGY --------------------------------------------------------
     inline = {
-      adapter = "copilot", -- Ensure this is also 'ollama' if you want Ollama for inline
+      adapter = "ollama", -- Also set to ollama directly
       keymaps = {
         accept_change = {
           modes = {
@@ -444,7 +447,7 @@ local defaults = {
     },
     -- CMD STRATEGY -----------------------------------------------------------
     cmd = {
-      adapter = "copilot", -- Ensure this is also 'ollama' if you want Ollama for commands
+      adapter = "ollama", -- Also set to ollama directly
       opts = {
         system_prompt = [[You are currently plugged in to the Neovim text editor on a user's machine. Your core task is to generate an command-line inputs that the user can run within Neovim. Below are some rules to adhere to:
 
@@ -611,4 +614,5 @@ We'll repeat this cycle until the tests pass. Ensure no deviations from these st
 
 1. Identify the programming language.
 2. Describe the purpose of the code and reference core concepts from the programming language.
-3. Explain each function or significant block of c
+3. Explain each function or significant block of code, including parameters and return values.
+4. Highlight any specific functions or methods used 
