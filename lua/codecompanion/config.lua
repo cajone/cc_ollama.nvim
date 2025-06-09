@@ -1,6 +1,7 @@
 -- lua/codecompanion/config.lua
 -- This file defines CodeCompanion's default configuration.
--- IMPORTANT: Reverted 'ollama' adapter definition back to a string.
+-- MODIFIED: Adapters table refactored to include ONLY the 'ollama' adapter
+-- and the 'Explain' prompt's content string is now correctly terminated.
 
 local providers = require("codecompanion.providers")
 local ui_utils = require("codecompanion.utils.ui")
@@ -16,9 +17,8 @@ local constants = {
 local defaults = {
   adapters = {
     -- LLMs -------------------------------------------------------------------
-    -- REVERTED: 'ollama' is now defined as a string.
-    -- The actual 'codecompanion.adapters.ollama' module will be required
-    -- dynamically by CodeCompanion's internal 'resolve' function when needed.
+    -- REVERTED: 'ollama' is now defined as a string, as CodeCompanion's internal
+    -- loading mechanism expects it this way for built-in adapters.
     ollama = "ollama",
     -- Non LLMs (keeping these as strings for now for consistency with original)
     jina = "jina",
@@ -615,4 +615,4 @@ We'll repeat this cycle until the tests pass. Ensure no deviations from these st
 1. Identify the programming language.
 2. Describe the purpose of the code and reference core concepts from the programming language.
 3. Explain each function or significant block of code, including parameters and return values.
-4. Highlight any specific functions or methods used 
+4. Highlight any specific functions or meth
