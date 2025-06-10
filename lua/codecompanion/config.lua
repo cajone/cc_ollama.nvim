@@ -394,7 +394,7 @@ local defaults = {
     },
     -- INLINE STRATEGY --------------------------------------------------------
     inline = {
-      adapter = "ollama",
+      adapter = "ollama", -- Set the default adapter for inline to Ollama
       keymaps = {
         accept_change = {
           modes = {
@@ -436,7 +436,9 @@ local defaults = {
           },
         },
       },
+      opts = {}, -- ADDED: Empty 'opts' table to prevent 'attempt to index field 'opts' (a nil value)'
     },
+
     -- CMD STRATEGY -----------------------------------------------------------
     cmd = {
       adapter = "ollama",
