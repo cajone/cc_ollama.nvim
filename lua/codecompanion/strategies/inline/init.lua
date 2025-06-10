@@ -33,16 +33,16 @@ function Inline:submit(prompt)
     log:debug("[Inline] Adapter resolved: %s", vim.inspect(self.adapter))
   end
 
-  -- Now, self.adapter should be the full adapter object.
-  -- Check if self.adapter.opts exists before accessing .stream
+  -- Ensure self.adapter.opts is a table. If it's nil, create it.
+  -- This is a defensive check to prevent 'attempt to index field 'opts' (a nil value)'.
   if not self.adapter.opts then
-    log:error("[Inline] Adapter '%s' does not have an 'opts' table. Cannot set stream property.", self.adapter.name or "unknown")
-    return
+    log:warn("[Inline] Adapter '%s' resolved without an 'opts' table. Initializing an empty one.", self.adapter.name or "unknown")
+    self.adapter.opts = {}
   end
 
   -- Inline editing only works with streaming off - We should remember the current status
-  _streaming = self.adapter.opts.stream
-  self.adapter.opts.stream = false
+  _streaming = self.adapter.opts.stream -- Safely retrieve, will be nil if not set, or false if not explicitly true
+  self.adapter.opts.stream = false -- Now safe to assign, as self.adapter.opts is guaranteed to be a table
 
   -- Set keymaps and start diffing
   self:setup_buffer()

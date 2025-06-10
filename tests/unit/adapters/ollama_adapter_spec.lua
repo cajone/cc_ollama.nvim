@@ -27,6 +27,13 @@ describe("Ollama Adapter", function()
     -- Temporarily set CodeCompanion's config to our mock config
     -- This relies on CodeCompanion exposing a way to inject config,
     -- or if not, we'd mock 'require("codecompanion.config")' directly.
+    -- For simplicity, let's assume `codecompanion.config` can be modified for testing.
+    -- A more robust way might be to mock the `require` call itself.
+    -- Given the error is in `inline/init.lua` where `self.adapter.opts.stream` is accessed,
+    -- the issue is how the adapter is constructed when `adapters.resolve` is called.
+
+    -- Let's ensure CodeCompanion's main config is using our mock for the adapter definition.
+    -- We can override `require("codecompanion.config")` for the scope of this test.
     -- This is a common pattern for mocking in Lua.
     package.loaded["codecompanion.config"] = mock_config
   end)
@@ -49,6 +56,7 @@ describe("Ollama Adapter", function()
     assert.truthy(resolved_ollama_adapter.opts, "Resolved Ollama adapter should have an 'opts' table")
 
     -- Check if 'stream' is explicitly set to true in the 'opts' table
+    assert.truthy(resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be true")
     assert.are.equal(true, resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be exactly true")
   end)
 

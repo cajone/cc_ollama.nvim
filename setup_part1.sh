@@ -5,7 +5,7 @@
 # This version creates a completely isolated, temporary Neovim environment
 # for the tests to prevent interference with the user's main Neovim config.
 # It consolidates all plugin definitions directly into the temporary init.lua.
-# FIXED: Included the corrected `inline/init.lua` to prevent 'attempt to index field opts (a nil value)' error.
+# FIXED: Included the corrected `inline/init.lua` to robustly handle 'opts' table potentially being nil.
 
 echo "--- Starting setup_part1.sh ---"
 echo "--- Current Directory: $(pwd) ---"
@@ -407,6 +407,13 @@ describe("Ollama Adapter", function()
     -- Temporarily set CodeCompanion's config to our mock config
     -- This relies on CodeCompanion exposing a way to inject config,
     -- or if not, we'd mock 'require("codecompanion.config")' directly.
+    -- For simplicity, let's assume `codecompanion.config` can be modified for testing.
+    -- A more robust way might be to mock the `require` call itself.
+    -- Given the error is in `inline/init.lua` where `self.adapter.opts.stream` is accessed,
+    -- the issue is how the adapter is constructed when `adapters.resolve` is called.
+
+    -- Let's ensure CodeCompanion's main config is using our mock for the adapter definition.
+    -- We can override `require("codecompanion.config")` for the scope of this test.
     -- This is a common pattern for mocking in Lua.
     package.loaded["codecompanion.config"] = mock_config
   end)
@@ -429,6 +436,7 @@ describe("Ollama Adapter", function()
     assert.truthy(resolved_ollama_adapter.opts, "Resolved Ollama adapter should have an 'opts' table")
 
     -- Check if 'stream' is explicitly set to true in the 'opts' table
+    assert.truthy(resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be true")
     assert.are.equal(true, resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be exactly true")
   end)
 
@@ -437,7 +445,6 @@ describe("Ollama Adapter", function()
 end)
 EOF_OLLAMA_ADAPTER_TEST_CODE
 
-# Expected content for /home/pete/git/cc_ollama.nvim/tests/unit/helpers.lua
 read -r -d '' EXPECTED_TEST_HELPERS_FILE << 'EOF_TEST_HELPERS_FILE'
 -- ~/git/cc_ollama/tests/unit/helpers.lua
 -- Minimal helper file for Plenary tests in CodeCompanion.nvim.
@@ -495,16 +502,16 @@ function Inline:submit(prompt)
     log:debug("[Inline] Adapter resolved: %s", vim.inspect(self.adapter))
   end
 
-  -- Now, self.adapter should be the full adapter object.
-  -- Check if self.adapter.opts exists before accessing .stream
+  -- Ensure self.adapter.opts is a table. If it's nil, create it.
+  -- This is a defensive check to prevent 'attempt to index field 'opts' (a nil value)'.
   if not self.adapter.opts then
-    log:error("[Inline] Adapter '%s' does not have an 'opts' table. Cannot set stream property.", self.adapter.name or "unknown")
-    return
+    log:warn("[Inline] Adapter '%s' resolved without an 'opts' table. Initializing an empty one.", self.adapter.name or "unknown")
+    self.adapter.opts = {}
   end
 
   -- Inline editing only works with streaming off - We should remember the current status
-  _streaming = self.adapter.opts.stream
-  self.adapter.opts.stream = false
+  _streaming = self.adapter.opts.stream -- Safely retrieve, will be nil if not set, or false if not explicitly true
+  self.adapter.opts.stream = false -- Now safe to assign, as self.adapter.opts is guaranteed to be a table
 
   -- Set keymaps and start diffing
   self:setup_buffer()
@@ -544,7 +551,633 @@ return Inline
 EOF_INLINE_INIT_FILE
 
 
-# --- 2. Write and Verify File Contents ---
+# Expected content for /home/pete/git/cc_ollama.nvim/lua/codecompanion/config.lua (Complete File)
+read -r -d '' EXPECTED_CODECOMPANION_CONFIG_FILE << 'EOF_CODECOMPANION_CONFIG_FILE'
+-- lua/codecompanion/config.lua
+-- This file defines CodeCompanion's default configuration.
+-- MODIFIED: Adapters table refactored to include ONLY the 'ollama' adapter.
+
+local providers = require("codecompanion.providers")
+local ui_utils = require("codecompanion.utils.ui")
+
+local fmt = string.format
+
+local constants = {
+  LLM_ROLE = "llm",
+  USER_ROLE = "user",
+  SYSTEM_ROLE = "system",
+}
+
+local defaults = {
+  adapters = {
+    -- LLMs -------------------------------------------------------------------
+    -- IMPORTANT CHANGE: Directly require the ollama adapter here as a table.
+    -- All other adapter references have been removed as per your request.
+    ollama = require("codecompanion.adapters.ollama"),
+    -- OPTIONS ----------------------------------------------------------------
+    opts = {
+      allow_insecure = false, -- Allow insecure connections?
+      cache_models_for = 1800, -- Cache adapter models for this long (seconds)
+      proxy = nil, -- [protocol://]host[:port] e.g. socks5://127.0.0.1:9999
+      show_defaults = true, -- Show default adapters
+      show_model_choices = true, -- Show model choices when changing adapter
+    },
+  },
+  constants = constants,
+  strategies = {
+    -- CHAT STRATEGY ----------------------------------------------------------
+    chat = {
+      adapter = "copilot", -- Default adapter, overridden by your plugin config
+      roles = {
+        ---The header name for the LLM's messages
+        ---@type string|fun(adapter: CodeCompanion.Adapter): string
+        llm = function(adapter)
+          return "CodeCompanion (" .. adapter.formatted_name .. ")"
+        end,
+
+        ---The header name for your messages
+        ---@type string
+        user = "Me",
+      },
+      tools = {
+        groups = {
+          ["full_stack_dev"] = {
+            description = "Full Stack Developer - Can run code, edit code and modify files",
+            system_prompt = "**DO NOT** make any assumptions about the dependencies that a user has installed. If you need to install any dependencies to fulfil the user's request, do so via the Command Runner tool. If the user doesn't specify a path, use their current working directory.",
+            tools = {
+              "cmd_runner",
+              "editor",
+              "create_file",
+              "read_file",
+              "insert_edit_into_file",
+            },
+          },
+          ["files"] = {
+            description = "Tools related to creating, reading and editing files",
+            tools = {
+              "create_file",
+              "read_file",
+              "insert_edit_into_file",
+            },
+          },
+        },
+        ["cmd_runner"] = {
+          callback = "strategies.chat.agents.tools.cmd_runner",
+          description = "Run shell commands initiated by the LLM",
+          opts = {
+            requires_approval = true,
+          },
+        },
+        ["editor"] = {
+          callback = "strategies.chat.agents.tools.editor",
+          description = "Update a buffer with the LLM's response",
+        },
+        ["insert_edit_into_file"] = {
+          callback = "strategies.chat.agents.tools.insert_edit_into_file",
+          description = "Insert code into an existing file",
+          opts = {
+            requires_approval = true,
+          },
+        },
+        ["create_file"] = {
+          callback = "strategies.chat.agents.tools.create_file",
+          description = "Create a file in the current working directory",
+          opts = {
+            requires_approval = true,
+          },
+        },
+        ["read_file"] = {
+          callback = "strategies.chat.agents.tools.read_file",
+          description = "Read a file in the current working directory",
+        },
+        ["web_search"] = {
+          callback = "strategies.chat.agents.tools.web_search",
+          description = "Search the web for information",
+          opts = {
+            adapter = "tavily", -- tavily
+            opts = {
+              search_depth = "advanced",
+              topic = "general",
+              chunks_per_source = 3,
+              max_results = 5,
+            },
+          },
+        },
+        ["next_edit_suggestion"] = {
+          callback = "strategies.chat.agents.tools.next_edit_suggestion",
+          description = "Suggest and jump to the next position to edit",
+        },
+        opts = {
+          auto_submit_errors = false, -- Send any errors to the LLM automatically?
+          auto_submit_success = true, -- Send any successful output to the LLM automatically?
+        },
+      },
+      variables = {
+        ["buffer"] = {
+          callback = "strategies.chat.variables.buffer",
+          description = "Share the current buffer with the LLM",
+          opts = {
+            contains_code = true,
+            has_params = true,
+          },
+        },
+        ["lsp"] = {
+          callback = "strategies.chat.variables.lsp",
+          description = "Share LSP information and code for the current buffer",
+          opts = {
+            contains_code = true,
+          },
+        },
+        ["viewport"] = {
+          callback = "strategies.chat.variables.viewport",
+          description = "Share the code that you see in Neovim with the LLM",
+          opts = {
+            contains_code = true,
+          },
+        },
+      },
+      slash_commands = {
+        ["buffer"] = {
+          callback = "strategies.chat.slash_commands.buffer",
+          description = "Insert open buffers",
+          opts = {
+            contains_code = true,
+            provider = providers.pickers, -- telescope|fzf_lua|mini_pick|snacks|default
+          },
+        },
+        ["fetch"] = {
+          callback = "strategies.chat.slash_commands.fetch",
+          description = "Insert URL contents",
+          opts = {
+            adapter = "jina", -- jina
+            cache_path = vim.fn.stdpath("data") .. "/codecompanion/urls",
+            provider = providers.pickers, -- telescope|fzf_lua|mini_pick|snacks|default
+          },
+        },
+        ["file"] = {
+          callback = "strategies.chat.slash_commands.file",
+          description = "Insert a file",
+          opts = {
+            contains_code = true,
+            max_lines = 1000,
+            provider = providers.pickers, -- telescope|fzf_lua|mini_pick|snacks|default
+          },
+        },
+        ["help"] = {
+          callback = "strategies.chat.slash_commands.help",
+          description = "Insert content from help tags",
+          opts = {
+            contains_code = false,
+            max_lines = 128, -- Maximum amount of lines to of the help file to send (NOTE: Each vimdoc line is typically 10 tokens)
+            provider = providers.help, -- telescope|fzf_lua|mini_pick|snacks
+          },
+        },
+        ["image"] = {
+          callback = "strategies.chat.slash_commands.image",
+          description = "Insert an image",
+          opts = {
+            dirs = {}, -- Directories to search for images
+            filetypes = { "png", "jpg", "jpeg", "gif", "webp" }, -- Filetypes to search for
+            provider = providers.images, -- telescope|snacks|default
+          },
+        },
+        ["now"] = {
+          callback = "strategies.chat.slash_commands.now",
+          description = "Insert the current date and time",
+          opts = {
+            contains_code = false,
+          },
+        },
+        ["symbols"] = {
+          callback = "strategies.chat.slash_commands.symbols",
+          description = "Insert symbols for a selected file",
+          opts = {
+            contains_code = true,
+            provider = providers.pickers, -- telescope|fzf_lua|mini_pick|snacks|default
+          },
+        },
+        ["terminal"] = {
+          callback = "strategies.chat.slash_commands.terminal",
+          description = "Insert terminal output",
+          opts = {
+            contains_code = false,
+          },
+        },
+        ["workspace"] = {
+          callback = "strategies.chat.slash_commands.workspace",
+          description = "Load a workspace file",
+          opts = {
+            contains_code = true,
+          },
+        },
+      },
+      keymaps = {
+        options = {
+          modes = {
+            n = "?",
+          },
+          callback = "keymaps.options",
+          description = "Options",
+          hide = true,
+        },
+        completion = {
+          modes = {
+            i = "<C-_>",
+          },
+          index = 1,
+          callback = "keymaps.completion",
+          description = "Completion Menu",
+        },
+        send = {
+          modes = {
+            n = { "<CR>", "<C-s>" },
+            i = "<C-s>",
+          },
+          index = 2,
+          callback = "keymaps.send",
+          description = "Send",
+        },
+        regenerate = {
+          modes = {
+            n = "gr",
+          },
+          index = 3,
+          callback = "keymaps.regenerate",
+          description = "Regenerate the last response",
+        },
+        close = {
+          modes = {
+            n = "<C-c>",
+            i = "<C-c>",
+          },
+          index = 4,
+          callback = "keymaps.close",
+          description = "Close Chat",
+        },
+        stop = {
+          modes = {
+            n = "q",
+          },
+          index = 5,
+          callback = "keymaps.stop",
+          description = "Stop Request",
+        },
+        clear = {
+          modes = {
+            n = "gx",
+          },
+          index = 6,
+          callback = "keymaps.clear",
+          description = "Clear Chat",
+        },
+        codeblock = {
+          modes = {
+            n = "gc",
+          },
+          index = 7,
+          callback = "keymaps.codeblock",
+          description = "Insert Codeblock",
+        },
+        yank_code = {
+          modes = {
+            n = "gy",
+          },
+          index = 8,
+          callback = "keymaps.yank_code",
+          description = "Yank Code",
+        },
+        pin = {
+          modes = {
+            n = "gp",
+          },
+          index = 9,
+          callback = "keymaps.pin_reference",
+          description = "Pin Reference",
+        },
+        watch = {
+          modes = {
+            n = "gw",
+          },
+          index = 10,
+          callback = "keymaps.toggle_watch",
+          description = "Watch Buffer",
+        },
+        next_chat = {
+          modes = {
+            n = "}",
+          },
+          index = 11,
+          callback = "keymaps.next_chat",
+          description = "Next Chat",
+        },
+        previous_chat = {
+          modes = {
+            n = "{",
+          },
+          index = 12,
+          callback = "keymaps.previous_chat",
+          description = "Previous Chat",
+        },
+        next_header = {
+          modes = {
+            n = "]]",
+          },
+          index = 13,
+          callback = "keymaps.next_header",
+          description = "Next Header",
+        },
+        previous_header = {
+          modes = {
+            n = "[[",
+          },
+          index = 14,
+          callback = "keymaps.previous_header",
+          description = "Previous Header",
+        },
+        change_adapter = {
+          modes = {
+            n = "ga",
+          },
+          index = 15,
+          callback = "keymaps.change_adapter",
+          description = "Change adapter",
+        },
+        fold_code = {
+          modes = {
+            n = "gf",
+          },
+          index = 15,
+          callback = "keymaps.fold_code",
+          description = "Fold code",
+        },
+        debug = {
+          modes = {
+            n = "gd",
+          },
+          index = 16,
+          callback = "keymaps.debug",
+          description = "View debug info",
+        },
+        system_prompt = {
+          modes = {
+            n = "gs",
+          },
+          index = 17,
+          callback = "keymaps.toggle_system_prompt",
+          description = "Toggle the system prompt",
+        },
+        auto_tool_mode = {
+          modes = {
+            n = "gta",
+          },
+          index = 18,
+          callback = "keymaps.auto_tool_mode",
+          description = "Toggle automatic tool mode",
+        },
+        goto_file_under_cursor = {
+          modes = { n = "gR" },
+          index = 19,
+          callback = "keymaps.goto_file_under_cursor",
+          description = "Open the file under cursor in a new tab.",
+        },
+      },
+      opts = {
+        blank_prompt = "", -- The prompt to use when the user doesn't provide a prompt
+        completion_provider = providers.completion, -- blink|cmp|coc|default
+        register = "+", -- The register to use for yanking code
+        yank_jump_delay_ms = 400, -- Delay in milliseconds before jumping back from the yanked code
+        ---@type string|fun(path: string)
+        goto_file_action = ui_utils.tabnew_reuse,
+      },
+    },
+    -- INLINE STRATEGY --------------------------------------------------------
+    inline = {
+      adapter = "copilot",
+      keymaps = {
+        accept_change = {
+          modes = {
+            n = "ga",
+          },
+          index = 1,
+          callback = "keymaps.accept_change",
+          description = "Accept change",
+        },
+        reject_change = {
+          modes = {
+            n = "gr",
+          },
+          index = 2,
+          callback = "keymaps.reject_change",
+          description = "Reject change",
+        },
+      },
+      variables = {
+        ["buffer"] = {
+          callback = "strategies.inline.variables.buffer",
+          description = "Share the current buffer with the LLM",
+          opts = {
+            contains_code = true,
+          },
+        },
+        ["chat"] = {
+          callback = "strategies.inline.variables.chat",
+          description = "Share the currently open chat buffer with the LLM",
+          opts = {
+            contains_code = true,
+          },
+        },
+        ["clipboard"] = {
+          callback = "strategies.inline.variables.clipboard",
+          description = "Share the contents of the clipboard with the LLM",
+          opts = {
+            contains_code = true,
+          },
+        },
+      },
+    },
+    -- CMD STRATEGY -----------------------------------------------------------
+    cmd = {
+      adapter = "copilot",
+      opts = {
+        system_prompt = [[You are currently plugged in to the Neovim text editor on a user's machine. Your core task is to generate an command-line inputs that the user can run within Neovim. Below are some rules to adhere to:
+
+- Return plain text only
+- Do not wrap your response in a markdown block or backticks
+- Do not use any line breaks or newlines in you response
+- Do not provide any explanations
+- Generate an command that is valid and can be run in Neovim
+- Ensure the command is relevant to the user's request]],
+      },
+    },
+  },
+  -- PROMPT LIBRARIES ---------------------------------------------------------
+  prompt_library = {
+    ["Custom Prompt"] = {
+      strategy = "inline",
+      description = "Prompt the LLM from Neovim",
+      opts = {
+        index = 3,
+        is_default = true,
+        is_slash_cmd = false,
+        user_prompt = true,
+      },
+      prompts = {
+        {
+          role = constants.SYSTEM_ROLE,
+          content = function(context)
+            return fmt(
+              [[I want you to act as a senior %s developer. I will ask you specific questions and I want you to return raw code only (no codeblocks and no explanations). If you can't respond with code, respond with nothing]],
+              context.filetype
+            )
+          end,
+          opts = {
+            visible = false,
+            tag = "system_tag",
+          },
+        },
+      },
+    },
+    ["Code workflow"] = {
+      strategy = "workflow",
+      description = "Use a workflow to guide an LLM in writing code",
+      opts = {
+        index = 4,
+        is_default = true,
+        short_name = "cw",
+      },
+      prompts = {
+        {
+          -- We can group prompts together to make a workflow
+          -- This is the first prompt in the workflow
+          {
+            role = constants.SYSTEM_ROLE,
+            content = function(context)
+              return fmt(
+                "You carefully provide accurate, factual, thoughtful, nuanced answers, and are brilliant at reasoning. If you think there might not be a correct answer, you say so. Always spend a few sentences explaining background context, assumptions, and step-by-step thinking BEFORE you try to answer a question. Don't be verbose in your answers, but do provide details and examples where it might help the explanation. You are an expert software engineer for the %s language",
+                context.filetype
+              )
+            end,
+            opts = {
+              visible = false,
+            },
+          },
+          {
+            role = constants.USER_ROLE,
+            content = "I want you to ",
+            opts = {
+              auto_submit = false,
+            },
+          },
+        },
+        -- This is the second group of prompts
+        {
+          {
+            role = constants.USER_ROLE,
+            content = "Great. Now let's consider your code. I'd like you to check it carefully for correctness, style, and efficiency, and give constructive criticism for how to improve it.",
+            opts = {
+              auto_submit = true,
+            },
+          },
+        },
+        -- This is the final group of prompts
+        {
+          {
+            role = constants.USER_ROLE,
+            content = "Thanks. Now let's revise the code based on the feedback, without additional explanations.",
+            opts = {
+              auto_submit = true,
+            },
+          },
+        },
+      },
+    },
+    ["Edit<->Test workflow"] = {
+      strategy = "workflow",
+      description = "Use a workflow to repeatedly edit then test code",
+      opts = {
+        index = 5,
+        is_default = true,
+        short_name = "et",
+      },
+      prompts = {
+        {
+          {
+            name = "Setup Test",
+            role = constants.USER_ROLE,
+            opts = { auto_submit = false },
+            content = function()
+              -- Enable turbo mode!!!
+              vim.g.codecompanion_auto_tool_mode = true
+
+              return [[### Instructions
+
+Your instructions here
+
+### Steps to Follow
+
+You are required to write code following the instructions provided above and test the correctness by running the designated test suite. Follow these steps exactly:
+
+1. Update the code in #buffer{watch} using the @editor tool
+2. Then use the @cmd_runner tool to run the test suite with `<test_cmd>` (do this after you have updated the code)
+3. Make sure you trigger both tools in the same response
+
+We'll repeat this cycle until the tests pass. Ensure no deviations from these steps.]]
+            end,
+          },
+        },
+        {
+          {
+            name = "Repeat On Failure",
+            role = constants.USER_ROLE,
+            opts = { auto_submit = true },
+            -- Scope this prompt to the cmd_runner tool
+            condition = function()
+              return _G.codecompanion_current_tool == "cmd_runner"
+            end,
+            -- Repeat until the tests pass, as indicated by the testing flag
+            -- which the cmd_runner tool sets on the chat buffer
+            repeat_until = function(chat)
+              return chat.tools.flags.testing == true
+            end,
+            content = "The tests have failed. Can you edit the buffer and run the test suite again?",
+          },
+        },
+      },
+    },
+    ["Explain"] = {
+      strategy = "chat",
+      description = "Explain how code in a buffer works",
+      opts = {
+        index = 6,
+        is_default = true,
+        is_slash_cmd = false,
+        modes = { "v" },
+        short_name = "explain",
+        auto_submit = true,
+        user_prompt = false,
+        stop_context_insertion = true,
+      },
+      prompts = {
+        {
+          role = constants.SYSTEM_ROLE,
+          content = [[When asked to explain code, follow these steps:
+
+1. Identify the programming language.
+2. Describe the purpose of the code and reference core concepts from the programming language.
+3. Explain each function or significant block of code within the provided selection.
+4. Provide examples if necessary.
+5. Conclude with a summary of the code's overall functionality.]],
+        },
+      },
+    },
+  }, -- This closes prompt_library table
+} -- This closes defaults table
+
+return defaults -- This returns the defaults table
+EOF_CODECOMPANION_CONFIG_FILE
+
+
+# --- 2. Writing and Verifying content of configuration files... ---
 echo "2. Writing and Verifying content of configuration files..." | tee -a "$AUTOMATION_REPORT"
 
 # Function to write and verify a file
@@ -587,6 +1220,7 @@ write_and_verify_file "$CC_OLLAMA_ADAPTER_FILE" "EXPECTED_OLLAMA_ADAPTER_FILE" "
 write_and_verify_file "$CC_OLLAMA_TEST_SPEC" "EXPECTED_OLLAMA_TEST_SPEC" "Ollama Test Spec in Fork"
 write_and_verify_file "$CC_OLLAMA_TEST_HELPERS" "EXPECTED_TEST_HELPERS_FILE" "Test Helpers File in Fork"
 write_and_verify_file "$CC_OLLAMA_INLINE_STRATEGY_FILE" "EXPECTED_INLINE_INIT_FILE" "Inline Strategy init.lua in Fork"
+write_and_verify_file "$CC_OLLAMA_FORK_DIR/lua/codecompanion/config.lua" "EXPECTED_CODECOMPANION_CONFIG_FILE" "CodeCompanion Default Config File in Fork"
 
 echo "--- Automated File Content Verification Complete ---" | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"
