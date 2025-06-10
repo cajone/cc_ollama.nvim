@@ -375,6 +375,7 @@ return {
   -- REMOVED: The 'schema' table has been temporarily removed from here for debugging purposes.
 }
 return M
+
 EOF_OLLAMA_ADAPTER_FILE
 
 # Expected content for /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua
