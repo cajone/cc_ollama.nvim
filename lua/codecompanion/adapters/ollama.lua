@@ -110,7 +110,7 @@ return {
         return data.content
       else
         return openai.handlers.tokens(self, data) -- Fallback if Ollama stream format is similar to OpenAI
-      end -- REMOVED: extraneous '})' and 'end' were here
+      end
     end,
     form_parameters = function(self, params, messages)
       return openai.handlers.form_parameters(self, params, messages)

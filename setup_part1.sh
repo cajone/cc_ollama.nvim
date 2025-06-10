@@ -5,6 +5,7 @@
 # This version creates a completely isolated, temporary Neovim environment
 # for the tests to prevent interference with the user's main Neovim config.
 # It consolidates all plugin definitions directly into the temporary init.lua.
+# FIXED: Included the corrected `inline/init.lua` to prevent 'attempt to index field opts (a nil value)' error.
 
 echo "--- Starting setup_part1.sh ---"
 echo "--- Current Directory: $(pwd) ---"
@@ -25,6 +26,8 @@ TEMP_INIT_LUA="$TEMP_NVIM_CONFIG_DIR/init.lua"
 CC_OLLAMA_ADAPTER_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/adapters/ollama.lua"
 CC_OLLAMA_TEST_SPEC="$CC_OLLAMA_FORK_DIR/tests/unit/adapters/ollama_adapter_spec.lua"
 CC_OLLAMA_TEST_HELPERS="$CC_OLLAMA_FORK_DIR/tests/unit/helpers.lua"
+CC_OLLAMA_INLINE_STRATEGY_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/strategies/inline/init.lua"
+
 
 # Clear previous report (only from part1)
 > "$AUTOMATION_REPORT"
@@ -38,6 +41,7 @@ mkdir -p "$TEMP_NVIM_DATA_DIR" # Ensure data dir exists for Lazy.nvim
 mkdir -p "$(dirname "$CC_OLLAMA_ADAPTER_FILE")" # For the adapter file in the fork itself
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_SPEC")"    # For test spec in the fork
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_HELPERS")" # For test helpers in the fork
+mkdir -p "$(dirname "$CC_OLLAMA_INLINE_STRATEGY_FILE")" # For the inline strategy file in the fork
 
 echo "   Directories checked/created." | tee -a "$AUTOMATION_REPORT"
 
@@ -104,8 +108,8 @@ require("lazy").setup({
           end,
         },
         inline = {
-          adapter = "ollama",
-          provider = "ollama",
+          adapter = "ollama", -- Use the "ollama" adapter as defined in the plugin's internal config.
+          provider = "ollama", -- Keep provider for consistency if needed by CodeCompanion.
           keymaps = {},
           variables = {},
           opts = {
@@ -283,7 +287,7 @@ return {
         return data.content
       else
         return openai.handlers.tokens(self, data) -- Fallback if Ollama stream format is similar to OpenAI
-      end -- REMOVED: extraneous '})' and 'end' were here
+      end
     end,
     form_parameters = function(self, params, messages)
       return openai.handlers.form_parameters(self, params, messages)
@@ -454,6 +458,91 @@ end
 return helpers
 EOF_TEST_HELPERS_FILE
 
+# Expected content for /home/pete/git/cc_ollama.nvim/lua/codecompanion/strategies/inline/init.lua
+read -r -d '' EXPECTED_INLINE_INIT_FILE << 'EOF_INLINE_INIT_FILE'
+local client = require("codecompanion.client")
+local log = require("codecompanion.utils.log")
+local CONSTANTS = require("codecompanion.constants")
+
+---@class CodeCompanion.Strategy.Inline: CodeCompanion.Strategy
+---@field adapter CodeCompanion.Adapter The adapter instance for this strategy
+---@field opts table Configuration options for the inline strategy
+
+local Inline = {}
+Inline.__index = Inline
+
+-- ... (other functions in Inline)
+
+local _streaming = true
+
+---Submit the prompts to the LLM to process
+---@param prompt table The prompts to send to the LLM
+---@return nil
+function Inline:submit(prompt)
+  log:info("[Inline] Request started")
+
+  -- CRITICAL FIX: Ensure self.adapter is the resolved adapter object.
+  -- If self.adapter is still just the string name, resolve it.
+  if type(self.adapter) == "string" then
+    log:debug("[Inline] Resolving adapter '%s' within submit function...", self.adapter)
+    local adapters_module = require("codecompanion.adapters")
+    self.adapter = adapters_module.resolve(self.adapter)
+    if not self.adapter then
+      log:error("[Inline] Failed to resolve adapter '%s'. Aborting.", self.adapter)
+      -- Handle error: maybe return or raise, but for now, log and exit.
+      return
+    end
+    log:debug("[Inline] Adapter resolved: %s", vim.inspect(self.adapter))
+  end
+
+  -- Now, self.adapter should be the full adapter object.
+  -- Check if self.adapter.opts exists before accessing .stream
+  if not self.adapter.opts then
+    log:error("[Inline] Adapter '%s' does not have an 'opts' table. Cannot set stream property.", self.adapter.name or "unknown")
+    return
+  end
+
+  -- Inline editing only works with streaming off - We should remember the current status
+  _streaming = self.adapter.opts.stream
+  self.adapter.opts.stream = false
+
+  -- Set keymaps and start diffing
+  self:setup_buffer()
+
+  self.current_request = client
+    .new({ adapter = self.adapter:map_schema_to_params(), user_args = { event = "InlineStarted" } })
+    :request({ messages = self.adapter:map_roles(prompt) }, {
+      ---@param err string
+      ---@param data table
+      ---@param adapter CodeCompanion.Adapter The modified adapter from the http client
+      callback = function(err, data, adapter)
+        local function error(msg)
+          log:error("[Inline] Request failed with error %s", msg)
+        end
+
+        if err then
+          return error(err)
+        end
+
+        if data then
+          data = self.adapter.handlers.inline_output(adapter, data, self.context)
+          if data.status == CONSTANTS.STATUS_SUCCESS then
+            return self:done(data.output)
+          else
+            return error(data.output)
+          end
+        end
+      end,
+    }, {
+      bufnr = self.bufnr,
+      context = self.context or {},
+      strategy = "inline",
+    })
+end
+
+return Inline
+EOF_INLINE_INIT_FILE
+
 
 # --- 2. Write and Verify File Contents ---
 echo "2. Writing and Verifying content of configuration files..." | tee -a "$AUTOMATION_REPORT"
@@ -497,6 +586,7 @@ write_and_verify_file "$TEMP_INIT_LUA" "EXPECTED_TEMP_INIT_LUA" "Temporary Nvim 
 write_and_verify_file "$CC_OLLAMA_ADAPTER_FILE" "EXPECTED_OLLAMA_ADAPTER_FILE" "Ollama Adapter File in Fork"
 write_and_verify_file "$CC_OLLAMA_TEST_SPEC" "EXPECTED_OLLAMA_TEST_SPEC" "Ollama Test Spec in Fork"
 write_and_verify_file "$CC_OLLAMA_TEST_HELPERS" "EXPECTED_TEST_HELPERS_FILE" "Test Helpers File in Fork"
+write_and_verify_file "$CC_OLLAMA_INLINE_STRATEGY_FILE" "EXPECTED_INLINE_INIT_FILE" "Inline Strategy init.lua in Fork"
 
 echo "--- Automated File Content Verification Complete ---" | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"
