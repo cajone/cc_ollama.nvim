@@ -1,10 +1,11 @@
 -- lua/codecompanion/adapters/ollama.lua
--- Modified to enable tooling via MCPHub integration and correctly handle Ollama API responses.
+-- Modified to enable tooling via MCPHub integration.
+-- SCHEMA TABLE TEMPORARILY REMOVED FOR DEBUGGING '<eof>' ERROR.
 
 local config = require("codecompanion.config")
 local curl = require("plenary.curl")
 local log = require("codecompanion.utils.log")
-local openai = require("codecompanion.adapters.openai") -- Still used for compatible handlers
+local openai = require("codecompanion.adapters.openai")
 
 local _cached_adapter
 
@@ -32,7 +33,6 @@ local function get_models(self, opts)
   }
 
   local ok, response = pcall(function()
-    -- Ollama's native API for listing models is /api/tags
     return curl.get(url .. "/api/tags", {
       sync = true,
       headers = headers,
@@ -52,15 +52,15 @@ local function get_models(self, opts)
   end
 
   local models = {}
-  -- Ollama's native /api/tags response structure is { models = [{name: "...", ...}] }
-  if json and json.models then
-    for _, model in ipairs(json.models) do
-      table.insert(models, model.name)
-    end
-  -- Fallback for OpenAI compatible response structure if Ollama ever supported it for /v1/models
-  elseif json and json.data then
+  -- Check for 'data' key for OpenAI compatible response
+  if json and json.data then
     for _, model in ipairs(json.data) do
       table.insert(models, model.id)
+    end
+  -- Fallback for Ollama's native /api/tags response structure
+  elseif json and json.models then
+    for _, model in ipairs(json.models) do
+      table.insert(models, model.name)
     end
   end
 
@@ -79,7 +79,7 @@ return {
     user = "user",
   },
   opts = {
-    stream = true, -- Explicitly set 'stream = true' here.
+    stream = true,
     tools = true, -- ENABLED: Set to true to allow tool usage
     vision = false,
   },
@@ -88,28 +88,22 @@ return {
     tokens = true,
     tools = true, -- ENABLED: Indicate that this adapter supports tools
   },
-  -- For OpenAI-compatible chat, use /v1/chat/completions.
-  -- For native Ollama API, it would be /api/chat. We'll assume OpenAI compatibility for now.
-  url = "${url}/v1/chat/completions",
+  url = "${url}/v1/chat/completions", -- Correct for OpenAI-compatible chat API
   env = {
     url = "http://localhost:11434",
   },
   handlers = {
-    -- Some handlers can still leverage OpenAI's logic if the API is compatible.
+    --- Use the OpenAI adapter for the bulk of the work
     setup = function(self)
       return openai.handlers.setup(self)
     end,
     tokens = function(self, data)
-      -- This needs to be adapted for Ollama's streaming response if stream=true is used.
-      -- For non-streaming, `data.message.content` is relevant.
-      -- For streaming, it might be `data.delta.content` or similar.
-      -- For now, we'll return content directly if it exists, otherwise pass to OpenAI's token handler.
       if data and data.message and data.message.content then
         return data.message.content
       elseif data and data.content then -- for raw completion API without chat structure
         return data.content
       else
-        return openai.handlers.tokens(self, data) -- Fallback if Ollama stream format is similar to OpenAI
+        return openai.handlers.tokens(self, data)
       end
     end,
     form_parameters = function(self, params, messages)
@@ -121,7 +115,6 @@ return {
     form_tools = function(self, tools)
       return openai.handlers.form_tools(self, tools)
     end,
-    -- CORRECTED: Custom chat_output handler for Ollama's response structure
     chat_output = function(self, data)
       log:trace("[Ollama Adapter] chat_output data received: %s", vim.inspect(data))
       if data and data.message and data.message.content then
@@ -141,11 +134,8 @@ return {
         return openai.handlers.tools.output_response(self, tool_call, output)
       end,
     },
-    -- CORRECTED: Custom inline_output handler for Ollama's response structure
     inline_output = function(self, data, context)
       log:trace("[Ollama Adapter] inline_output data received: %s", vim.inspect(data))
-      -- Inline output typically expects the content directly, not wrapped in chat message.
-      -- Assuming similar structure as chat_output for consistency in data received from http.lua.
       if data and data.message and data.message.content then
         return {
           output = data.message.content,
@@ -159,44 +149,6 @@ return {
       return openai.handlers.on_exit(self, data)
     end,
   },
-  schema = {
-    model = {
-      default = "qwen2.5-coder:latest",
-      type = "string",
-      description = "The Ollama model to use for generation.",
-      choices = get_models, -- Function to dynamically get available models
-    },
-    temperature = {
-      default = 0.7,
-      type = "number",
-      description = "Controls randomness in the output (0.0-1.0).",
-    },
-    top_p = {
-      default = 0.9,
-      type = "number",
-      description = "Controls diversity via nucleus sampling (0.0-1.0).",
-    },
-    num_ctx = {
-      default = 4096,
-      type = "integer",
-      description = "Sets the context window size.",
-    },
-    num_predict = {
-      default = -1, -- -1 means predict until the model finishes
-      type = "integer",
-      description = "The maximum number of tokens to predict.",
-    },
-    stop = {
-      default = nil,
-      type = "array",
-      description = "One or more strings to stop generation at.",
-    },
-    stream = { -- 'stream' definition here is for schema documentation and validation.
-      default = true,
-      type = "boolean",
-      description = "Whether to stream responses.",
-    },
-    -- Other Ollama specific parameters can be added here if needed.
-  },
+  -- REMOVED: The 'schema' table has been temporarily removed from here for debugging purposes.
 }
 return M
