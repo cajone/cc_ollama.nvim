@@ -100,3 +100,4 @@ echo "You can view its content using: cat $AUTOMATION_REPORT"
 echo ""
 
 echo "--- setup_part2.sh Finished ---"
+
