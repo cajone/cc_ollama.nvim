@@ -436,7 +436,16 @@ local defaults = {
           },
         },
       },
-      opts = {}, -- ADDED: Empty 'opts' table to prevent 'attempt to index field 'opts' (a nil value)'
+      -- ADDED: Complete 'opts' table with default values, mirroring the chat strategy's opts.
+      -- This should ensure all expected sub-fields are present and prevent 'attempt to index field 'opts' (a nil value)'.
+      opts = {
+        blank_prompt = "", -- The prompt to use when the user doesn't provide a prompt
+        completion_provider = providers.completion, -- blink|cmp|coc|default
+        register = "+", -- The register to use for yanking code
+        yank_jump_delay_ms = 400, -- Delay in milliseconds before jumping back from the yanked code
+        ---@type string|fun(path: string)
+        goto_file_action = ui_utils.tabnew_reuse,
+      },
     },
 
     -- CMD STRATEGY -----------------------------------------------------------
