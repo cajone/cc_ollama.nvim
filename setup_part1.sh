@@ -168,6 +168,7 @@ local M = {
   dependencies = {
     "nvim-lua/plenary.nvim",           -- Essential for async operations and HTTP requests
     "nvim-treesitter/nvim-treesitter", -- Used for syntax highlighting and parsing
+    -- "MeanderingProgrammer/render-markdown.nvim", -- REMOVED FROM HERE: Should be a top-level Lazy.nvim plugin
     {
       -- mcphub.nvim plugin definition
       "ravitemer/mcphub.nvim",
