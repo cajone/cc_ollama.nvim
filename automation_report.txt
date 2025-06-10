@@ -2,8 +2,8 @@
    Directories checked/created.
 2. Verifying content of Main CodeCompanion Config (/home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua)...
    FAILURE: Content of Main CodeCompanion Config DOES NOT MATCH expected. Diff details below:
---- /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua	2025-06-10 14:20:08.984071545 +0100
-+++ /tmp/tmp.UA0zzW13E1	2025-06-10 14:20:25.577766149 +0100
+--- /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua	2025-06-10 14:23:19.813419824 +0100
++++ /tmp/tmp.EpHBzjzQ84	2025-06-10 14:23:24.028093946 +0100
 @@ -4,7 +4,7 @@
  -- It is designed to be imported by your main Lazy.nvim configuration.
  
@@ -82,7 +82,7 @@
 2. Verifying content of Ollama Adapter File (/home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua)...
    FAILURE: Content of Ollama Adapter File DOES NOT MATCH expected. Diff details below:
 --- /home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua	2025-06-10 11:14:18.227572829 +0100
-+++ /tmp/tmp.YNSqb326xy	2025-06-10 14:20:25.586766216 +0100
++++ /tmp/tmp.0PXG93ydpB	2025-06-10 14:23:24.036094006 +0100
 @@ -57,7 +57,7 @@
      for _, model in ipairs(json.models) do
        table.insert(models, model.name)
@@ -118,7 +118,7 @@
 2. Verifying content of Ollama Test Spec (/home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua)...
    FAILURE: Content of Ollama Test Spec DOES NOT MATCH expected. Diff details below:
 --- /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua	2025-06-10 12:22:59.637600279 +0100
-+++ /tmp/tmp.0hkRpy5iil	2025-06-10 14:20:25.593766268 +0100
++++ /tmp/tmp.IpbkR2L3qt	2025-06-10 14:23:24.042094050 +0100
 @@ -57,8 +57,7 @@
  
      -- Check if 'stream' is explicitly set to true in the 'opts' table
