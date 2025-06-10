@@ -8,6 +8,7 @@
 # FIXED: Included the corrected `inline/init.lua` to robustly handle 'opts' table potentially being nil.
 # FIXED: Changed headless test command to use isolated init.lua.
 # FIXED: Corrected circular dependency in `codecompanion/config.lua`.
+# FINAL FIX: Ensured the headless nvim command uses the temporary isolated init.lua.
 
 echo "--- Starting setup_part1.sh ---"
 echo "--- Current Directory: $(pwd) ---"
