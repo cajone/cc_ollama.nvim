@@ -393,8 +393,10 @@ local defaults = {
       },
     },
     -- INLINE STRATEGY --------------------------------------------------------
+    -- INLINE STRATEGY --------------------------------------------------------
     inline = {
-      adapter = "ollama", -- Set the default adapter for inline to Ollama
+      -- IMPORTANT: Ensure the adapter is set to "ollama" here.
+      adapter = "ollama",
       keymaps = {
         accept_change = {
           modes = {
@@ -436,17 +438,19 @@ local defaults = {
           },
         },
       },
-      -- ADDED: Complete 'opts' table with default values, mirroring the chat strategy's opts.
-      -- This should ensure all expected sub-fields are present and prevent 'attempt to index field 'opts' (a nil value)'.
+      -- ENSURE THIS 'opts' TABLE IS COMPLETE AND CORRECTLY STRUCTURED
       opts = {
-        blank_prompt = "",                          -- The prompt to use when the user doesn't provide a prompt
-        completion_provider = providers.completion, -- blink|cmp|coc|default
-        register = "+",                             -- The register to use for yanking code
-        yank_jump_delay_ms = 400,                   -- Delay in milliseconds before jumping back from the yanked code
+        blank_prompt = "", -- The prompt to use when the user doesn't provide a prompt
+        -- These will be resolved at runtime within the plugin's internal logic,
+        -- so we just need placeholder 'nil' values here.
+        completion_provider = nil,
+        register = "+",           -- The register to use for yanking code
+        yank_jump_delay_ms = 400, -- Delay in milliseconds before jumping back from the yanked code
         ---@type string|fun(path: string)
-        goto_file_action = ui_utils.tabnew_reuse,
+        goto_file_action = nil,
       },
     },
+
 
     -- CMD STRATEGY -----------------------------------------------------------
     cmd = {
