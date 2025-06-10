@@ -56,7 +56,6 @@ describe("Ollama Adapter", function()
     assert.truthy(resolved_ollama_adapter.opts, "Resolved Ollama adapter should have an 'opts' table")
 
     -- Check if 'stream' is explicitly set to true in the 'opts' table
-    assert.truthy(resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be true")
     assert.are.equal(true, resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be exactly true")
   end)
 
