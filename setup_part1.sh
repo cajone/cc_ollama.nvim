@@ -4,6 +4,7 @@
 # Part 1 of the Automated Setup and Test Script for cc_ollama.nvim plugin.
 # This version creates a completely isolated, temporary Neovim environment
 # for the tests to prevent interference with the user's main Neovim config.
+# It consolidates all plugin definitions directly into the temporary init.lua.
 
 echo "--- Starting setup_part1.sh ---"
 echo "--- Current Directory: $(pwd) ---"
@@ -15,19 +16,15 @@ AUTOMATION_REPORT="$CC_OLLAMA_FORK_DIR/automation_report.txt"
 # NEW: Define a temporary root directory for the isolated Neovim environment
 TEMP_NVIM_ROOT="/tmp/isolated_nvim_test_$(date +%s)"
 TEMP_NVIM_CONFIG_DIR="$TEMP_NVIM_ROOT/nvim"
-TEMP_NVIM_LUA_PLUGINS_AI_DIR="$TEMP_NVIM_CONFIG_DIR/lua/plugins/ai"
-TEMP_NVIM_LUA_PLUGINS_DIR="$TEMP_NVIM_CONFIG_DIR/lua/plugins"
+TEMP_NVIM_DATA_DIR="$TEMP_NVIM_ROOT/nvim_data" # Use a separate data directory for isolation
 
 # Paths to files within the temporary Neovim environment
 TEMP_INIT_LUA="$TEMP_NVIM_CONFIG_DIR/init.lua"
-TEMP_CC_OLLAMA_CONFIG="$TEMP_NVIM_LUA_PLUGINS_AI_DIR/cc_ollama.lua"
-TEMP_LAZY_LOAD_CONFIG="$TEMP_NVIM_LUA_PLUGINS_DIR/lazy_load.lua"
 
 # Paths to files within the cc_ollama.nvim fork (these are not in the temp nvim config)
 CC_OLLAMA_ADAPTER_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/adapters/ollama.lua"
 CC_OLLAMA_TEST_SPEC="$CC_OLLAMA_FORK_DIR/tests/unit/adapters/ollama_adapter_spec.lua"
 CC_OLLAMA_TEST_HELPERS="$CC_OLLAMA_FORK_DIR/tests/unit/helpers.lua"
-MINIMAL_TEST_INIT_FORK_ROOT="$CC_OLLAMA_FORK_DIR/minimal_test_init.lua" # This file will be written and then used as the primary test init
 
 # Clear previous report (only from part1)
 > "$AUTOMATION_REPORT"
@@ -36,7 +33,8 @@ MINIMAL_TEST_INIT_FORK_ROOT="$CC_OLLAMA_FORK_DIR/minimal_test_init.lua" # This f
 echo "1. Ensuring necessary directories exist..." | tee -a "$AUTOMATION_REPORT"
 
 # Create temporary directories for the isolated Neovim config
-mkdir -p "$TEMP_NVIM_LUA_PLUGINS_AI_DIR"
+mkdir -p "$TEMP_NVIM_CONFIG_DIR"
+mkdir -p "$TEMP_NVIM_DATA_DIR" # Ensure data dir exists for Lazy.nvim
 mkdir -p "$(dirname "$CC_OLLAMA_ADAPTER_FILE")" # For the adapter file in the fork itself
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_SPEC")"    # For test spec in the fork
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_HELPERS")" # For test helpers in the fork
@@ -50,6 +48,7 @@ echo "   Directories checked/created." | tee -a "$AUTOMATION_REPORT"
 read -r -d '' EXPECTED_TEMP_INIT_LUA << 'EOF_TEMP_INIT_LUA'
 -- init.lua (within temporary Neovim config)
 -- This is the primary entry point for the isolated Neovim test environment.
+-- All plugin definitions are consolidated here to avoid 'import' issues.
 
 -- Set Neovim leader key
 vim.g.mapleader = '\\'
@@ -74,48 +73,41 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- Configure lazy.nvim to load ONLY the necessary plugins from the temporary config
+-- Configure lazy.nvim to load ALL necessary plugins directly
 require("lazy").setup({
-  -- Ensure lazy.nvim is loading the plugins from our *temporary* lua directory correctly.
-  -- The 'import' paths are relative to the 'runtimepath' which includes our TEMP_NVIM_CONFIG_DIR/lua
-  { import = "plugins.lazy_load" },
-})
-EOF_TEMP_INIT_LUA
-
-# Expected content for the lazy_load.lua within the temporary Neovim config
-read -r -d '' EXPECTED_TEMP_LAZY_LOAD_CONFIG << 'EOF_TEMP_LAZY_LOAD_CONFIG'
--- lua/plugins/lazy_load.lua (within temporary Neovim config)
--- This file defines plugins specifically for the isolated test environment.
-
-return {
   checker = { enable = true, notify = false },
   defaults = { lazy = false, version = false },
   change_detection = { notify = false },
 
-  -- Essential dependencies
+  -- Essential dependencies for CodeCompanion and its tests
   "nvim-lua/plenary.nvim",
   "nvim-treesitter/nvim-treesitter",
 
   -- Your forked CodeCompanion plugin
   {
     "cajone/cc_ollama.nvim",
-    branch = "cleanup",
+    branch = "cleanup", -- This tells Lazy.nvim to use your 'cleanup' branch
     opts = {
-      log_level = "debug",
+      log_level = "debug", -- Set to "debug" for verbose output during troubleshooting
       strategies = {
         chat = {
-          adapter = "ollama",
-          provider = "ollama",
+          adapter = "ollama", -- Use the "ollama" adapter as defined in the plugin's internal config.
+          provider = "ollama", -- Keep provider for consistency if needed by CodeCompanion.
           system_prompt = function()
             -- Minimal prompt for testing adapter functionality
-            return "You are an AI programming assistant."
+            local hub = require("mcphub").get_hub_instance()
+            if hub then
+              return hub:get_active_servers_prompt()
+            else
+              return "You are an AI programming assistant."
+            end
           end,
         },
         inline = {
           adapter = "ollama",
           provider = "ollama",
-          keymaps = {}, -- Minimal keymaps
-          variables = {}, -- Minimal variables
+          keymaps = {},
+          variables = {},
           opts = {
             blank_prompt = "",
             completion_provider = nil,
@@ -155,9 +147,11 @@ return {
           require("mcphub").setup({
             port = 4000,
             host = "localhost",
-            config = vim.fn.expand("~/.config/mcphub/servers.json"), -- This still points to user's real config
+            -- Point to the *user's* config file for mcp-hub server definitions,
+            -- as the mcp-hub process itself uses this.
+            config = vim.fn.expand("~/.config/mcphub/servers.json"),
             use_bundled_binary = false,
-            log = { level = vim.log.levels.DEBUG, to_file = true, file_path = "/tmp/mcphub_debug.log" },
+            log = { level = vim.log.levels.DEBUG, to_file = true, file_path = "/tmp/mcphub_debug_isolated.log" },
           })
         end,
       },
@@ -166,8 +160,13 @@ return {
       require("codecompanion").setup(opts)
     end,
   },
-}
-EOF_TEMP_LAZY_LOAD_CONFIG
+}, {
+  -- Lazy.nvim root directory for plugins. This is where Lazy.nvim will store
+  -- the installed plugins relative to the isolated data dir (TEMP_NVIM_DATA_DIR).
+  -- This ensures plugin installations are isolated from your main Neovim setup.
+  root = vim.fn.stdpath("data") .. "/lazy",
+})
+EOF_TEMP_INIT_LUA
 
 
 # Expected content for /home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua
@@ -371,7 +370,6 @@ return {
     -- Other Ollama specific parameters can be added here if needed.
   },
 }
-
 EOF_OLLAMA_ADAPTER_FILE
 
 # Expected content for /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua
@@ -405,13 +403,6 @@ describe("Ollama Adapter", function()
     -- Temporarily set CodeCompanion's config to our mock config
     -- This relies on CodeCompanion exposing a way to inject config,
     -- or if not, we'd mock 'require("codecompanion.config")' directly.
-    -- For simplicity, let's assume `codecompanion.config` can be modified for testing.
-    -- A more robust way might be to mock the `require` call itself.
-    -- Given the error is in `inline/init.lua` where `self.adapter.opts.stream` is accessed,
-    -- the issue is how the adapter is constructed when `adapters.resolve` is called.
-
-    -- Let's ensure CodeCompanion's main config is using our mock for the adapter definition.
-    -- We can override `require("codecompanion.config")` for the scope of this test.
     -- This is a common pattern for mocking in Lua.
     package.loaded["codecompanion.config"] = mock_config
   end)
@@ -501,8 +492,6 @@ EXIT_CODE=0 # Initialize global exit code for part1
 
 # Write files for the *isolated* Neovim environment
 write_and_verify_file "$TEMP_INIT_LUA" "EXPECTED_TEMP_INIT_LUA" "Temporary Nvim init.lua"
-write_and_verify_file "$TEMP_LAZY_LOAD_CONFIG" "EXPECTED_TEMP_LAZY_LOAD_CONFIG" "Temporary Lazy Load Config"
-# No need to write TEMP_CC_OLLAMA_CONFIG directly. Lazy.nvim will clone it.
 
 # Write files for the cc_ollama.nvim fork itself
 write_and_verify_file "$CC_OLLAMA_ADAPTER_FILE" "EXPECTED_OLLAMA_ADAPTER_FILE" "Ollama Adapter File in Fork"
