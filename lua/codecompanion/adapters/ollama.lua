@@ -159,47 +159,44 @@ return {
       return openai.handlers.on_exit(self, data)
     end,
   },
-  -- REMOVED: The 'schema' table has been temporarily removed from here for debugging purposes.
-  -- This is to isolate if the 'tbl_deep_extend' error is caused by schema definition conflicts
-  -- or hidden syntax issues.
-  -- schema = {
-  --   model = {
-  --     default = "qwen2.5-coder:latest",
-  --     type = "string",
-  --     description = "The Ollama model to use for generation.",
-  --     choices = get_models, -- Function to dynamically get available models
-  --   },
-  --   temperature = {
-  --     default = 0.7,
-  --     type = "number",
-  --     description = "Controls randomness in the output (0.0-1.0).",
-  --   },
-  --   top_p = {
-  --     default = 0.9,
-  --     type = "number",
-  --     description = "Controls diversity via nucleus sampling (0.0-1.0).",
-  --   },
-  --   num_ctx = {
-  --     default = 4096,
-  --     type = "integer",
-  --     description = "Sets the context window size.",
-  --   },
-  --   num_predict = {
-  --     default = -1, -- -1 means predict until the model finishes
-  --     type = "integer",
-  --     description = "The maximum number of tokens to predict.",
-  --   },
-  --   stop = {
-  --     default = nil,
-  --     type = "array",
-  --     description = "One or more strings to stop generation at.",
-  --   },
-  --   stream = { -- 'stream' definition here is for schema documentation and validation.
-  --     default = true,
-  --     type = "boolean",
-  --     description = "Whether to stream responses.",
-  --   },
-  --   -- Other Ollama specific parameters can be added here if needed.
-  -- },
+  schema = {
+    model = {
+      default = "qwen2.5-coder:latest",
+      type = "string",
+      description = "The Ollama model to use for generation.",
+      choices = get_models, -- Function to dynamically get available models
+    },
+    temperature = {
+      default = 0.7,
+      type = "number",
+      description = "Controls randomness in the output (0.0-1.0).",
+    },
+    top_p = {
+      default = 0.9,
+      type = "number",
+      description = "Controls diversity via nucleus sampling (0.0-1.0).",
+    },
+    num_ctx = {
+      default = 4096,
+      type = "integer",
+      description = "Sets the context window size.",
+    },
+    num_predict = {
+      default = -1, -- -1 means predict until the model finishes
+      type = "integer",
+      description = "The maximum number of tokens to predict.",
+    },
+    stop = {
+      default = nil,
+      type = "array",
+      description = "One or more strings to stop generation at.",
+    },
+    stream = { -- 'stream' definition here is for schema documentation and validation.
+      default = true,
+      type = "boolean",
+      description = "Whether to stream responses.",
+    },
+    -- Other Ollama specific parameters can be added here if needed.
+  },
 }
 return M
