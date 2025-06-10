@@ -20,14 +20,13 @@ function Inline:submit(prompt)
   log:info("[Inline] Request started")
 
   -- CRITICAL FIX: Ensure self.adapter is the resolved adapter object.
-  -- If self.adapter is still just the string name, resolve it.
+  -- If type is string, it means it hasn't been fully resolved yet by CodeCompanion's core.
   if type(self.adapter) == "string" then
     log:debug("[Inline] Resolving adapter '%s' within submit function...", self.adapter)
     local adapters_module = require("codecompanion.adapters")
     self.adapter = adapters_module.resolve(self.adapter)
     if not self.adapter then
       log:error("[Inline] Failed to resolve adapter '%s'. Aborting.", self.adapter)
-      -- Handle error: maybe return or raise, but for now, log and exit.
       return
     end
     log:debug("[Inline] Adapter resolved: %s", vim.inspect(self.adapter))

@@ -6,6 +6,8 @@
 # for the tests to prevent interference with the user's main Neovim config.
 # It consolidates all plugin definitions directly into the temporary init.lua.
 # FIXED: Included the corrected `inline/init.lua` to robustly handle 'opts' table potentially being nil.
+# FIXED: Changed headless test command to use isolated init.lua.
+# FIXED: Corrected circular dependency in `codecompanion/config.lua`.
 
 echo "--- Starting setup_part1.sh ---"
 echo "--- Current Directory: $(pwd) ---"
@@ -27,6 +29,7 @@ CC_OLLAMA_ADAPTER_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/adapters/ollama.lu
 CC_OLLAMA_TEST_SPEC="$CC_OLLAMA_FORK_DIR/tests/unit/adapters/ollama_adapter_spec.lua"
 CC_OLLAMA_TEST_HELPERS="$CC_OLLAMA_FORK_DIR/tests/unit/helpers.lua"
 CC_OLLAMA_INLINE_STRATEGY_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/strategies/inline/init.lua"
+CC_OLLAMA_CONFIG_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/config.lua"
 
 
 # Clear previous report (only from part1)
@@ -42,6 +45,7 @@ mkdir -p "$(dirname "$CC_OLLAMA_ADAPTER_FILE")" # For the adapter file in the fo
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_SPEC")"    # For test spec in the fork
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_HELPERS")" # For test helpers in the fork
 mkdir -p "$(dirname "$CC_OLLAMA_INLINE_STRATEGY_FILE")" # For the inline strategy file in the fork
+mkdir -p "$(dirname "$CC_OLLAMA_CONFIG_FILE")" # For the main config.lua file in the fork
 
 echo "   Directories checked/created." | tee -a "$AUTOMATION_REPORT"
 
@@ -489,14 +493,13 @@ function Inline:submit(prompt)
   log:info("[Inline] Request started")
 
   -- CRITICAL FIX: Ensure self.adapter is the resolved adapter object.
-  -- If self.adapter is still just the string name, resolve it.
+  -- If type is string, it means it hasn't been fully resolved yet by CodeCompanion's core.
   if type(self.adapter) == "string" then
     log:debug("[Inline] Resolving adapter '%s' within submit function...", self.adapter)
     local adapters_module = require("codecompanion.adapters")
     self.adapter = adapters_module.resolve(self.adapter)
     if not self.adapter then
       log:error("[Inline] Failed to resolve adapter '%s'. Aborting.", self.adapter)
-      -- Handle error: maybe return or raise, but for now, log and exit.
       return
     end
     log:debug("[Inline] Adapter resolved: %s", vim.inspect(self.adapter))
@@ -555,7 +558,7 @@ EOF_INLINE_INIT_FILE
 read -r -d '' EXPECTED_CODECOMPANION_CONFIG_FILE << 'EOF_CODECOMPANION_CONFIG_FILE'
 -- lua/codecompanion/config.lua
 -- This file defines CodeCompanion's default configuration.
--- MODIFIED: Adapters table refactored to include ONLY the 'ollama' adapter.
+-- FIXED: Circular dependency by setting 'ollama = {}' in the adapters table.
 
 local providers = require("codecompanion.providers")
 local ui_utils = require("codecompanion.utils.ui")
@@ -571,9 +574,10 @@ local constants = {
 local defaults = {
   adapters = {
     -- LLMs -------------------------------------------------------------------
-    -- IMPORTANT CHANGE: Directly require the ollama adapter here as a table.
-    -- All other adapter references have been removed as per your request.
-    ollama = require("codecompanion.adapters.ollama"),
+    -- IMPORTANT FIX: Define the Ollama adapter configuration as an empty table here.
+    -- The actual 'codecompanion.adapters.ollama' module is loaded and configured
+    -- by the CodeCompanion core's setup function, not directly here, to prevent circular dependencies.
+    ollama = {},
     -- OPTIONS ----------------------------------------------------------------
     opts = {
       allow_insecure = false, -- Allow insecure connections?
@@ -1220,7 +1224,7 @@ write_and_verify_file "$CC_OLLAMA_ADAPTER_FILE" "EXPECTED_OLLAMA_ADAPTER_FILE" "
 write_and_verify_file "$CC_OLLAMA_TEST_SPEC" "EXPECTED_OLLAMA_TEST_SPEC" "Ollama Test Spec in Fork"
 write_and_verify_file "$CC_OLLAMA_TEST_HELPERS" "EXPECTED_TEST_HELPERS_FILE" "Test Helpers File in Fork"
 write_and_verify_file "$CC_OLLAMA_INLINE_STRATEGY_FILE" "EXPECTED_INLINE_INIT_FILE" "Inline Strategy init.lua in Fork"
-write_and_verify_file "$CC_OLLAMA_FORK_DIR/lua/codecompanion/config.lua" "EXPECTED_CODECOMPANION_CONFIG_FILE" "CodeCompanion Default Config File in Fork"
+write_and_verify_file "$CC_OLLAMA_CONFIG_FILE" "EXPECTED_CODECOMPANION_CONFIG_FILE" "CodeCompanion Default Config File in Fork"
 
 echo "--- Automated File Content Verification Complete ---" | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"

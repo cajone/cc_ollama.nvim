@@ -1,6 +1,6 @@
 -- lua/codecompanion/config.lua
 -- This file defines CodeCompanion's default configuration.
--- MODIFIED: Adapters table refactored to include ONLY the 'ollama' adapter.
+-- FIXED: Circular dependency by setting 'ollama = {}' in the adapters table.
 
 local providers = require("codecompanion.providers")
 local ui_utils = require("codecompanion.utils.ui")
@@ -16,9 +16,10 @@ local constants = {
 local defaults = {
   adapters = {
     -- LLMs -------------------------------------------------------------------
-    -- IMPORTANT CHANGE: Directly require the ollama adapter here as a table.
-    -- All other adapter references have been removed as per your request.
-    ollama = require("codecompanion.adapters.ollama"),
+    -- IMPORTANT FIX: Define the Ollama adapter configuration as an empty table here.
+    -- The actual 'codecompanion.adapters.ollama' module is loaded and configured
+    -- by the CodeCompanion core's setup function, not directly here, to prevent circular dependencies.
+    ollama = {},
     -- OPTIONS ----------------------------------------------------------------
     opts = {
       allow_insecure = false, -- Allow insecure connections?
