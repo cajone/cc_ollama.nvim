@@ -14,7 +14,7 @@ local defaults = {
     -- LLMs -------------------------------------------------------------------
     -- IMPORTANT CHANGE: Directly require the ollama adapter here as a table.
     -- All other adapter references have been removed to streamline the setup.
-    ollama = require("codecompanion.adapters.ollama"),
+    ollama = {},
     -- OPTIONS ----------------------------------------------------------------
     opts = {
       allow_insecure = false,    -- Allow insecure connections?
