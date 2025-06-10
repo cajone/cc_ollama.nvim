@@ -1,6 +1,6 @@
 -- lua/codecompanion/adapters/ollama.lua
 -- Modified to enable tooling via MCPHub integration.
--- SCHEMA TABLE TEMPORARILY REMOVED FOR DEBUGGING '<eof>' ERROR.
+-- SCHEMA 'choices' for model now uses a static list to avoid dynamic function calls for debugging.
 
 local config = require("codecompanion.config")
 local curl = require("plenary.curl")
@@ -9,13 +9,14 @@ local openai = require("codecompanion.adapters.openai")
 
 local _cached_adapter
 
----Get a list of available Ollama models
+---Get a list of available Ollama models (NO LONGER USED FOR SCHEMA CHOICES)
 ---@params self CodeCompanion.Adapter
 ---@params opts? table
 ---@return table
 local function get_models(self, opts)
-  -- Prevent the adapter from being resolved multiple times due to `get_models`
-  -- having both `default` and `choices` functions
+  -- This function is kept for reference but is no longer called in the schema 'choices'.
+  -- Its primary role was to dynamically fetch models, but we've temporarily removed it
+  -- from the schema definition to isolate a potential parsing issue.
   if not _cached_adapter then
     local adapter = require("codecompanion.adapters").resolve(self)
     if not adapter then
@@ -149,6 +150,44 @@ return {
       return openai.handlers.on_exit(self, data)
     end,
   },
-  -- REMOVED: The 'schema' table has been temporarily removed from here for debugging purposes.
+  schema = {
+    model = {
+      default = "qwen2.5-coder:latest",
+      type = "string",
+      description = "The Ollama model to use for generation.",
+      choices = { "qwen2.5-coder:latest", "llama3" }, -- STATIC LIST for debugging the '<eof>' error
+    },
+    temperature = {
+      default = 0.7,
+      type = "number",
+      description = "Controls randomness in the output (0.0-1.0).",
+    },
+    top_p = {
+      default = 0.9,
+      type = "number",
+      description = "Controls diversity via nucleus sampling (0.0-1.0).",
+    },
+    num_ctx = {
+      default = 4096,
+      type = "integer",
+      description = "Sets the context window size.",
+    },
+    num_predict = {
+      default = -1, -- -1 means predict until the model finishes
+      type = "integer",
+      description = "The maximum number of tokens to predict.",
+    },
+    stop = {
+      default = nil,
+      type = "array",
+      description = "One or more strings to stop generation at.",
+    },
+    stream = { -- 'stream' definition here is for schema documentation and validation.
+      default = true,
+      type = "boolean",
+      description = "Whether to stream responses.",
+    },
+    -- Other Ollama specific parameters can be added here if needed.
+  },
 }
 return M
