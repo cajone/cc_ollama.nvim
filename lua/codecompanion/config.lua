@@ -394,7 +394,7 @@ local defaults = {
     },
     -- INLINE STRATEGY --------------------------------------------------------
     inline = {
-      adapter = "copilot",
+      adapter = "ollama",
       keymaps = {
         accept_change = {
           modes = {
@@ -439,7 +439,7 @@ local defaults = {
     },
     -- CMD STRATEGY -----------------------------------------------------------
     cmd = {
-      adapter = "copilot",
+      adapter = "ollama",
       opts = {
         system_prompt =
         [[You are currently plugged in to the Neovim text editor on a user's machine. Your core task is to generate an command-line inputs that the user can run within Neovim. Below are some rules to adhere to:
