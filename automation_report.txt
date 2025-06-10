@@ -2,8 +2,17 @@
    Directories checked/created.
 2. Verifying content of Main CodeCompanion Config (/home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua)...
    FAILURE: Content of Main CodeCompanion Config DOES NOT MATCH expected. Diff details below:
---- /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua	2025-06-10 12:44:53.197547209 +0100
-+++ /tmp/tmp.gs3SY3TAmw	2025-06-10 13:19:28.976048477 +0100
+--- /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua	2025-06-10 13:21:37.915980982 +0100
++++ /tmp/tmp.DXcRszpT0a	2025-06-10 13:24:24.568196161 +0100
+@@ -4,7 +4,7 @@
+ -- It is designed to be imported by your main Lazy.nvim configuration.
+ 
+ -- IMPORTANT: NO 'require("codecompanion.*")' calls at this top level.
+--- These modules become fully available only after CodeCompanion's 'setup' function runs.
++-- These modules become available only after CodeCompanion's 'setup' function runs.
+ 
+ local M = {
+   -- IMPORTANT: Point Lazy.nvim to your GitHub fork and specify the 'cleanup' branch.
 @@ -49,7 +49,7 @@
        },
        -- Explicitly define the 'inline' strategy.
@@ -40,17 +49,18 @@
          },
        },
      },
-@@ -131,8 +130,8 @@
+@@ -131,9 +130,9 @@
  
    -- Dependencies required by CodeCompanion
    dependencies = {
--    "nvim-lua/plenary.nvim",                     -- Essential for async operations and HTTP requests
--    "nvim-treesitter/nvim-treesitter",           -- Used for syntax highlighting and parsing
+-    "nvim-lua/plenary.nvim",           -- Essential for async operations and HTTP requests
 +    "nvim-lua/plenary.nvim",          -- Essential for async operations and HTTP requests
-+    "nvim-treesitter/nvim-treesitter", -- Used for syntax highlighting and parsing
-     "MeanderingProgrammer/render-markdown.nvim", -- Dependency for markdown rendering
+     "nvim-treesitter/nvim-treesitter", -- Used for syntax highlighting and parsing
+-    -- "MeanderingProgrammer/render-markdown.nvim", -- REMOVED FROM HERE: Should be a top-level Lazy.nvim plugin
++    "MeanderingProgrammer/render-markdown.nvim", -- Dependency for markdown rendering
      {
        -- mcphub.nvim plugin definition
+       "ravitemer/mcphub.nvim",
 @@ -143,12 +142,12 @@
        build = "npm install", -- This build step is for mcphub.nvim itself.
        config = function()
@@ -72,7 +82,7 @@
 2. Verifying content of Ollama Adapter File (/home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua)...
    FAILURE: Content of Ollama Adapter File DOES NOT MATCH expected. Diff details below:
 --- /home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua	2025-06-10 11:14:18.227572829 +0100
-+++ /tmp/tmp.N7VvmvQdrq	2025-06-10 13:19:28.983048527 +0100
++++ /tmp/tmp.KWKLiRR9i8	2025-06-10 13:24:24.575196212 +0100
 @@ -57,7 +57,7 @@
      for _, model in ipairs(json.models) do
        table.insert(models, model.name)
@@ -108,7 +118,7 @@
 2. Verifying content of Ollama Test Spec (/home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua)...
    FAILURE: Content of Ollama Test Spec DOES NOT MATCH expected. Diff details below:
 --- /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua	2025-06-10 12:22:59.637600279 +0100
-+++ /tmp/tmp.ddTp4y2Y05	2025-06-10 13:19:28.989048571 +0100
++++ /tmp/tmp.QKdNcZxU9Q	2025-06-10 13:24:24.582196262 +0100
 @@ -57,8 +57,7 @@
  
      -- Check if 'stream' is explicitly set to true in the 'opts' table
