@@ -1,35 +1,49 @@
 #!/bin/bash
 
 # run_all_setup.sh
-# Wrapper script to run the two parts of the CodeCompanion Ollama setup and test script.
+# This script orchestrates the execution of the refactored setup and test process
+# for the cc_ollama.nvim plugin. It calls each part of the setup in order.
 
-echo "--- Starting Wrapper Script ---"
+echo "--- Starting run_all_setup.sh (The Master Script) ---"
+echo "--- Current Directory: $(pwd) ---"
 
-# Ensure both parts are executable
-chmod +x ./setup_part1.sh
-chmod +x ./setup_part2.sh
+# Define the automation report file path
+CC_OLLAMA_FORK_DIR="$HOME/git/cc_ollama.nvim"
+AUTOMATION_REPORT="$CC_OLLAMA_FORK_DIR/automation_report.txt"
 
-# Run Part 1
-echo "Running setup_part1.sh..."
-./setup_part1.sh
-PART1_EXIT_CODE=$?
+# Clear the overall automation report at the beginning of the run
+> "$AUTOMATION_REPORT"
 
-if [ $PART1_EXIT_CODE -ne 0 ]; then
-    echo "ERROR: setup_part1.sh failed with exit code $PART1_EXIT_CODE. Aborting."
-    exit $PART1_EXIT_CODE
+# Execute Part 1: Directory Setup & Minimal Init.lua
+echo "" | tee -a "$AUTOMATION_REPORT"
+echo "Running setup_part1.sh..." | tee -a "$AUTOMATION_REPORT"
+./setup_part1.sh | tee -a "$AUTOMATION_REPORT"
+if [ $? -ne 0 ]; then
+    echo "ERROR: setup_part1.sh failed. Aborting." | tee -a "$AUTOMATION_REPORT"
+    exit 1
 fi
-echo "setup_part1.sh completed successfully."
 
-# Run Part 2
-echo "Running setup_part2.sh..."
-./setup_part2.sh
-PART2_EXIT_CODE=$?
-
-if [ $PART2_EXIT_CODE -ne 0 ]; then
-    echo "ERROR: setup_part2.sh failed with exit code $PART2_EXIT_CODE."
-    exit $PART2_EXIT_CODE
+# Execute Part 2: Write & Verify Lua Plugin Files
+echo "" | tee -a "$AUTOMATION_REPORT"
+echo "Running setup_part2.sh..." | tee -a "$AUTOMATION_REPORT"
+./setup_part2.sh | tee -a "$AUTOMATION_REPORT"
+if [ $? -ne 0 ]; then
+    echo "ERROR: setup_part2.sh failed. Aborting." | tee -a "$AUTOMATION_REPORT"
+    exit 1
 fi
-echo "setup_part2.sh completed successfully."
 
-echo "--- All setup and tests completed. ---"
+# Execute Part 3: Process Checks, Git, & Headless Test
+echo "" | tee -a "$AUTOMATION_REPORT"
+echo "Running setup_part3.sh..." | tee -a "$AUTOMATION_REPORT"
+./setup_part3.sh | tee -a "$AUTOMATION_REPORT"
+if [ $? -ne 0 ]; then
+    echo "ERROR: setup_part3.sh failed. Please review the errors in the report." | tee -a "$AUTOMATION_REPORT"
+    exit 1
+fi
 
+echo "" | tee -a "$AUTOMATION_REPORT"
+echo "--- Automated Setup and Test Script Finished Successfully! ---" | tee -a "$AUTOMATION_REPORT"
+echo "Full automation report can be found at: $AUTOMATION_REPORT"
+echo ""
+
+exit 0
