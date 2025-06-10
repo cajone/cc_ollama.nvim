@@ -44,7 +44,7 @@ echo "   All required processes are running." | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"
 
 
-# --- 4. Git Operations in Source Repository ---
+# --- 4. Performing Git operations in Source Repository ---
 echo "4. Performing Git operations in $CC_OLLAMA_FORK_DIR..." | tee -a "$AUTOMATION_REPORT"
 cd "$CC_OLLAMA_FORK_DIR" || { echo "Error: Could not change to $CC_OLLAMA_FORK_DIR. Exiting."; exit 1; }
 
@@ -67,7 +67,7 @@ echo "   Git operations complete." | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"
 
 
-# --- 5. Clean Lazy.nvim Cache ---
+# --- 5. Cleaning Lazy.nvim Cache ---
 echo "5. Cleaning Lazy.nvim cache (installed plugins)..." | tee -a "$AUTOMATION_REPORT"
 rm -rf "$HOME/.local/share/pvim/lazy/cajone_cc_ollama.nvim"
 rm -rf "$HOME/.local/share/pvim/lazy/ravitemer_mcphub.nvim"
@@ -76,7 +76,7 @@ rm -rf "$HOME/.local/share/pvim/lazy/nvim-telescope_telescope.nvim" # Added this
 echo "   Lazy.nvim cache cleaned." | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"
 
-# --- 6. Run Neovim Headless Test ---
+# --- 6. Running Neovim Headless Test ---
 echo "6. Running Neovim headless test. This will start and exit Neovim automatically." | tee -a "$AUTOMATION_REPORT"
 echo "   Output will be captured below:" | tee -a "$AUTOMATION_REPORT"
 echo "--------------------------------------------------" | tee -a "$AUTOMATION_REPORT"
