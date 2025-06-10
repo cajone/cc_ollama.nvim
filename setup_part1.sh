@@ -2,7 +2,7 @@
 
 # setup_part1.sh
 # Part 1 of the Automated Setup and Test Script for cc_ollama.nvim plugin.
-# Handles directory creation and verification of configuration file contents.
+# Handles directory creation, writing of configuration files, and verification of their contents.
 
 echo "--- Starting setup_part1.sh ---"
 echo "--- Current Directory: $(pwd) ---"
@@ -29,7 +29,10 @@ mkdir -p "$(dirname "$CC_OLLAMA_TEST_HELPERS")"
 mkdir -p "$(dirname "$PVIM_LAZY_LOAD_FILE")"
 echo "   Directories checked/created." | tee -a "$AUTOMATION_REPORT"
 
-# --- Expected File Contents (Embedded as Heredocs) ---
+
+# --- Define Expected File Contents (Embedded as Heredocs) ---
+
+# Expected content for /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua
 read -r -d '' EXPECTED_CC_OLLAMA_MAIN_CONFIG << 'EOF_CC_OLLAMA_MAIN_CONFIG'
 -- ~/.config/pvim/lua/plugins/ai/cc_ollama.lua
 -- This file defines the setup for your forked CodeCompanion (cc_ollama.nvim)
@@ -165,7 +168,6 @@ local M = {
   dependencies = {
     "nvim-lua/plenary.nvim",           -- Essential for async operations and HTTP requests
     "nvim-treesitter/nvim-treesitter", -- Used for syntax highlighting and parsing
-    -- "MeanderingProgrammer/render-markdown.nvim", -- REMOVED FROM HERE: Should be a top-level Lazy.nvim plugin
     {
       -- mcphub.nvim plugin definition
       "ravitemer/mcphub.nvim",
@@ -191,7 +193,6 @@ local M = {
 
   -- Main CodeCompanion setup function (executed after plugin loaded)
   config = function(_, opts)
-    -- THIS IS THE CRITICAL LINE: CodeCompanion's setup must happen first.
     require("codecompanion").setup(opts)
 
     -- Now, CodeCompanion's internal modules are available.
@@ -218,6 +219,7 @@ local M = {
 return M
 EOF_CC_OLLAMA_MAIN_CONFIG
 
+# Expected content for /home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua
 read -r -d '' EXPECTED_OLLAMA_ADAPTER_FILE << 'EOF_OLLAMA_ADAPTER_FILE'
 -- lua/codecompanion/adapters/ollama.lua
 -- Modified to enable tooling via MCPHub integration and correctly handle Ollama API responses.
@@ -425,6 +427,7 @@ return {
 return M
 EOF_OLLAMA_ADAPTER_FILE
 
+# Expected content for /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua
 read -r -d '' EXPECTED_OLLAMA_TEST_SPEC << 'EOF_OLLAMA_ADAPTER_TEST_CODE'
 -- ~/git/cc_ollama/tests/unit/adapters/ollama_adapter_spec.lua
 -- Unit test for the Ollama adapter in CodeCompanion.nvim.
@@ -493,6 +496,7 @@ describe("Ollama Adapter", function()
 end)
 EOF_OLLAMA_ADAPTER_TEST_CODE
 
+# Expected content for /home/pete/git/cc_ollama.nvim/tests/unit/helpers.lua
 read -r -d '' EXPECTED_TEST_HELPERS_FILE << 'EOF_TEST_HELPERS_FILE'
 -- ~/git/cc_ollama/tests/unit/helpers.lua
 -- Minimal helper file for Plenary tests in CodeCompanion.nvim.
@@ -513,6 +517,7 @@ end
 return helpers
 EOF_TEST_HELPERS_FILE
 
+# Expected content for /home/pete/.config/pvim/lua/plugins/lazy_load.lua
 read -r -d '' EXPECTED_LAZY_LOAD_FILE << 'EOF_LAZY_LOAD_FILE'
 -- OK first setup the plugin manager "Lazy"load
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -589,39 +594,50 @@ require("lazy").setup({
 })
 EOF_LAZY_LOAD_FILE
 
-# --- Function to verify file content ---
-verify_file_content() {
+# --- 2. Write and Verify File Contents ---
+echo "2. Writing and Verifying content of configuration files..." | tee -a "$AUTOMATION_REPORT"
+
+# Function to write and verify a file
+write_and_verify_file() {
     local file_path="$1"
-    local expected_content="$2"
-    local file_label="$3"
-    local temp_file=$(mktemp)
+    local expected_content_var="$2" # Name of the variable holding expected content
+    local file_description="$3"
 
-    echo "$expected_content" > "$temp_file"
+    echo "   Writing $file_description ($file_path)..." | tee -a "$AUTOMATION_REPORT"
+    # Use indirect expansion to get the content of the variable and write it
+    eval "cat <<< \"\$$expected_content_var\" > \"$file_path\""
+    if [ $? -ne 0 ]; then
+        echo "   ERROR: Failed to write $file_description." | tee -a "$AUTOMATION_REPORT"
+        EXIT_CODE=1
+        return
+    fi
 
-    echo "2. Verifying content of $file_label ($file_path)..." | tee -a "$AUTOMATION_REPORT"
-    if ! diff -u "$file_path" "$temp_file" > /dev/null; then
-        echo "   FAILURE: Content of $file_label DOES NOT MATCH expected. Diff details below:" | tee -a "$AUTOMATION_REPORT"
-        diff -u "$file_path" "$temp_file" | tee -a "$AUTOMATION_REPORT"
-        echo "" | tee -a "$AUTOMATION_REPORT"
-        rm "$temp_file"
-        return 1
+    echo "   Verifying content of $file_description ($file_path)..." | tee -a "$AUTOMATION_REPORT"
+    local current_content
+    current_content=$(cat "$file_path")
+    local expected_content
+    eval "expected_content=\$$expected_content_var" # Get content from variable
+
+    if diff -u <(echo "$expected_content") <(echo "$current_content") > /dev/null; then
+        echo "   SUCCESS: Content of $file_description MATCHES expected." | tee -a "$AUTOMATION_REPORT"
     else
-        echo "   SUCCESS: Content of $file_label MATCHES expected." | tee -a "$AUTOMATION_REPORT"
-        rm "$temp_file"
-        return 0
+        echo "   FAILURE: Content of $file_description DOES NOT MATCH expected. Diff details below:" | tee -a "$AUTOMATION_REPORT"
+        diff -u <(echo "$expected_content") <(echo "$current_content") | tee -a "$AUTOMATION_REPORT"
+        EXIT_CODE=1
     fi
 }
 
-# --- 2. Automated File Content Verification ---
-# Call the verification function for each critical Lua file
-verify_file_content "$CC_OLLAMA_MAIN_CONFIG" "$EXPECTED_CC_OLLAMA_MAIN_CONFIG" "Main CodeCompanion Config"
-verify_file_content "$CC_OLLAMA_ADAPTER_FILE" "$EXPECTED_OLLAMA_ADAPTER_FILE" "Ollama Adapter File"
-verify_file_content "$CC_OLLAMA_TEST_SPEC" "$EXPECTED_OLLAMA_TEST_SPEC" "Ollama Test Spec"
-verify_file_content "$CC_OLLAMA_TEST_HELPERS" "$EXPECTED_TEST_HELPERS_FILE" "Test Helpers File"
-verify_file_content "$PVIM_LAZY_LOAD_FILE" "$EXPECTED_LAZY_LOAD_FILE" "Main Lazy Load Config"
+EXIT_CODE=0 # Initialize global exit code for part1
 
-echo "" | tee -a "$AUTOMATION_REPORT"
+# Call the function for each file that needs to be written and verified
+write_and_verify_file "$CC_OLLAMA_MAIN_CONFIG" "EXPECTED_CC_OLLAMA_MAIN_CONFIG" "Main CodeCompanion Config"
+write_and_verify_file "$CC_OLLAMA_ADAPTER_FILE" "EXPECTED_OLLAMA_ADAPTER_FILE" "Ollama Adapter File"
+write_and_verify_file "$CC_OLLAMA_TEST_SPEC" "EXPECTED_OLLAMA_TEST_SPEC" "Ollama Test Spec"
+write_and_verify_file "$CC_OLLAMA_TEST_HELPERS" "EXPECTED_TEST_HELPERS_FILE" "Test Helpers File"
+write_and_verify_file "$PVIM_LAZY_LOAD_FILE" "EXPECTED_LAZY_LOAD_FILE" "Main Lazy Load Config"
+
 echo "--- Automated File Content Verification Complete ---" | tee -a "$AUTOMATION_REPORT"
-echo ""
+echo "" | tee -a "$AUTOMATION_REPORT"
 
-echo "--- setup_part1.sh Finished ---"
+exit $EXIT_CODE
+

@@ -57,7 +57,7 @@ local function get_models(self, opts)
     for _, model in ipairs(json.models) do
       table.insert(models, model.name)
     end
-    -- Fallback for OpenAI compatible response structure if Ollama ever supported it for /v1/models
+  -- Fallback for OpenAI compatible response structure if Ollama ever supported it for /v1/models
   elseif json and json.data then
     for _, model in ipairs(json.data) do
       table.insert(models, model.id)
@@ -79,7 +79,7 @@ return {
     user = "user",
   },
   opts = {
-    stream = true,
+    stream = true, -- RE-ADDED: Explicitly set 'stream = true' here.
     tools = true, -- ENABLED: Set to true to allow tool usage
     vision = false,
   },
@@ -193,7 +193,12 @@ return {
       type = "array",
       description = "One or more strings to stop generation at.",
     },
-    -- 'stream' is already defined in adapter's opts.
+    stream = { -- 'stream' definition here is for schema documentation and validation.
+      default = true,
+      type = "boolean",
+      description = "Whether to stream responses.",
+    },
     -- Other Ollama specific parameters can be added here if needed.
   },
 }
+return M

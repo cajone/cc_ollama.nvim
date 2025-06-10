@@ -1,175 +1,23 @@
 1. Ensuring necessary directories exist...
    Directories checked/created.
-2. Verifying content of Main CodeCompanion Config (/home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua)...
-   FAILURE: Content of Main CodeCompanion Config DOES NOT MATCH expected. Diff details below:
---- /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua	2025-06-10 14:53:10.078209899 +0100
-+++ /tmp/tmp.anx13jVQ7a	2025-06-10 15:00:30.065503442 +0100
-@@ -49,7 +49,7 @@
-       },
-       -- Explicitly define the 'inline' strategy.
-       inline = {
--        adapter = "ollama",  -- Use Ollama for inline strategy
-+        adapter = "ollama", -- Use Ollama for inline strategy
-         provider = "ollama", -- Keep provider for consistency
-         keymaps = {
-           accept_change = {
-@@ -93,11 +93,10 @@
-       },
-       -- Explicitly define the 'cmd' strategy.
-       cmd = {
--        adapter = "ollama",  -- Use Ollama for cmd strategy
-+        adapter = "ollama", -- Use Ollama for cmd strategy
-         provider = "ollama", -- Keep provider for consistency
-         opts = {
--          system_prompt =
--          [[You are currently plugged in to the Neovim text editor on a user's machine. Your core task is to generate an command-line inputs that the user can run within Neovim. Below are some rules to adhere to:
-+            system_prompt = [[You are currently plugged in to the Neovim text editor on a user's machine. Your core task is to generate an command-line inputs that the user can run within Neovim. Below are some rules to adhere to:
- 
- - Return plain text only
- - Do not wrap your response in a markdown block or backticks
-@@ -114,9 +113,9 @@
-       mcphub = {
-         callback = "mcphub.extensions.codecompanion", -- Link to the MCPHub extension's callback
-         opts = {
--          make_vars = true,                           -- Generate context variables from MCP resources
--          make_slash_commands = true,                 -- Enable slash commands like `/mcp`
--          show_result_in_chat = true                  -- Display tool execution results in chat
-+          make_vars = true,           -- Generate context variables from MCP resources
-+          make_slash_commands = true, -- Enable slash commands like `/mcp`
-+          show_result_in_chat = true  -- Display tool execution results in chat
-         },
-       },
-     },
-@@ -143,12 +142,12 @@
-       build = "npm install", -- This build step is for mcphub.nvim itself.
-       config = function()
-         require("mcphub").setup({
--          port = 4000,                                             -- MCP Hub server port
--          host = "localhost",                                      -- MCP Hub server host
-+          port = 4000,                                -- MCP Hub server port
-+          host = "localhost",                         -- MCP Hub server host
-           config = vim.fn.expand("~/.config/mcphub/servers.json"), -- Path to server definitions
--          use_bundled_binary = false,                              -- Use global `mcp-hub`
-+          use_bundled_binary = false,                 -- Use global `mcp-hub`
-           log = {
--            level = vim.log.levels.DEBUG,                          -- Enable debug logging for mcphub
-+            level = vim.log.levels.DEBUG,             -- Enable debug logging for mcphub
-             to_file = true,
-             file_path = vim.fn.expand("~/.config/mcphub/mcphub_debug.log"),
-           },
-
-2. Verifying content of Ollama Adapter File (/home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua)...
-   FAILURE: Content of Ollama Adapter File DOES NOT MATCH expected. Diff details below:
---- /home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua	2025-06-10 11:14:18.227572829 +0100
-+++ /tmp/tmp.xixfcwNE1y	2025-06-10 15:00:30.072503493 +0100
-@@ -57,7 +57,7 @@
-     for _, model in ipairs(json.models) do
-       table.insert(models, model.name)
-     end
--    -- Fallback for OpenAI compatible response structure if Ollama ever supported it for /v1/models
-+  -- Fallback for OpenAI compatible response structure if Ollama ever supported it for /v1/models
-   elseif json and json.data then
-     for _, model in ipairs(json.data) do
-       table.insert(models, model.id)
-@@ -79,7 +79,7 @@
-     user = "user",
-   },
-   opts = {
--    stream = true,
-+    stream = true, -- RE-ADDED: Explicitly set 'stream = true' here.
-     tools = true, -- ENABLED: Set to true to allow tool usage
-     vision = false,
-   },
-@@ -193,7 +193,12 @@
-       type = "array",
-       description = "One or more strings to stop generation at.",
-     },
--    -- 'stream' is already defined in adapter's opts.
-+    stream = { -- 'stream' definition here is for schema documentation and validation.
-+      default = true,
-+      type = "boolean",
-+      description = "Whether to stream responses.",
-+    },
-     -- Other Ollama specific parameters can be added here if needed.
-   },
- }
-+return M
-
-2. Verifying content of Ollama Test Spec (/home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua)...
-   FAILURE: Content of Ollama Test Spec DOES NOT MATCH expected. Diff details below:
---- /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua	2025-06-10 12:22:59.637600279 +0100
-+++ /tmp/tmp.I2Y7m3fDYD	2025-06-10 15:00:30.079503544 +0100
-@@ -57,8 +57,7 @@
- 
-     -- Check if 'stream' is explicitly set to true in the 'opts' table
-     assert.truthy(resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be true")
--    assert.are.equal(true, resolved_ollama_adapter.opts.stream,
--      "resolved_ollama_adapter.opts.stream should be exactly true")
-+    assert.are.equal(true, resolved_ollama_adapter.opts.stream, "resolved_ollama_adapter.opts.stream should be exactly true")
-   end)
- 
-   -- We can add more tests here later for other adapter properties,
-
-2. Verifying content of Test Helpers File (/home/pete/git/cc_ollama.nvim/tests/unit/helpers.lua)...
+2. Writing and Verifying content of configuration files...
+   Writing Main CodeCompanion Config (/home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua)...
+   Verifying content of Main CodeCompanion Config (/home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua)...
+   SUCCESS: Content of Main CodeCompanion Config MATCHES expected.
+   Writing Ollama Adapter File (/home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua)...
+   Verifying content of Ollama Adapter File (/home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua)...
+   SUCCESS: Content of Ollama Adapter File MATCHES expected.
+   Writing Ollama Test Spec (/home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua)...
+   Verifying content of Ollama Test Spec (/home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua)...
+   SUCCESS: Content of Ollama Test Spec MATCHES expected.
+   Writing Test Helpers File (/home/pete/git/cc_ollama.nvim/tests/unit/helpers.lua)...
+   Verifying content of Test Helpers File (/home/pete/git/cc_ollama.nvim/tests/unit/helpers.lua)...
    SUCCESS: Content of Test Helpers File MATCHES expected.
-2. Verifying content of Main Lazy Load Config (/home/pete/.config/pvim/lua/plugins/lazy_load.lua)...
-   FAILURE: Content of Main Lazy Load Config DOES NOT MATCH expected. Diff details below:
---- /home/pete/.config/pvim/lua/plugins/lazy_load.lua	2025-06-10 14:30:15.474439568 +0100
-+++ /tmp/tmp.ZiknB4Jchw	2025-06-10 15:00:30.090503624 +0100
-@@ -26,30 +26,30 @@
-   change_detection = { notify = false }, -- Stop reporting auto changes
- 
-   -- Plugins used straight out the box
--  { "instant-markdown/vim-instant-markdown" }, -- Instant Markdown
--  { "vimwiki/vimwiki" },                       -- Vimwiki
--  "MeanderingProgrammer/render-markdown.nvim", -- ADDED/MOVED HERE: Ensure render-markdown is a top-level plugin
--  "nvim-telescope/telescope.nvim",             -- ADDED HERE: Ensure Telescope is loaded early as a top-level plugin
-+  { "instant-markdown/vim-instant-markdown" },     -- Instant Markdown
-+  { "vimwiki/vimwiki" },                         -- Vimwiki
-+  "MeanderingProgrammer/render-markdown.nvim",     -- ADDED/MOVED HERE: Ensure render-markdown is a top-level plugin
-+  "nvim-telescope/telescope.nvim",                 -- ADDED HERE: Ensure Telescope is loaded early as a top-level plugin
- 
-   { import = "plugins.obsidian" },             -- obsidian note taker
-   { import = "plugins.treesitter" },
-   --  { import = "plugins.arduino" },  -- Arduino front end
-   --  { import = "plugins.lint" },      -- Linter(s)
- 
--  { import = "plugins.git" },      -- git related plugins
-+  { import = "plugins.git" },            -- git related plugins
-   -- { import = "plugins.render-markdown" }, -- REMOVED: Redundant import
--  { import = "plugins.terminal" }, -- Toggle Terminal window
-+  { import = "plugins.terminal" },         -- Toggle Terminal window
-   --  { import = "plugins.markdown-preview" }, -- Instant Markdown for neovim
- 
-   -- UI based plugins
-   { import = "plugins.ui.colorscheme" }, -- ColorScheme
-   { import = "plugins.ui.dressing" },    -- Allows prompts and selections
--  { import = "plugins.ui.lualine" },     -- Status Line
--  { import = "plugins.ui.mini" },        -- Collections on notes, todo's
--  { import = "plugins.ui.telescope" },   -- Fuzzy file finder and many other things
--  { import = "plugins.ui.todo" },        -- Todo notes etc
-+  { import = "plugins.ui.lualine" },      -- Status Line
-+  { import = "plugins.ui.mini" },         -- Collections on notes, todo's
-+  { import = "plugins.ui.telescope" },    -- Fuzzy file finder and many other things
-+  { import = "plugins.ui.todo" },         -- Todo notes etc
-   --  { import = "plugins.ui.noice" },        -- system messages popup window
--  { import = "plugins.ui.conform" },     -- Formatting, linting
-+  { import = "plugins.ui.conform" },      -- Formatting, linting
-   --  { import = "plugins.ui.fzf-lua" }, -- Formatting, linting
- 
-   -- AI based plugins
-@@ -61,7 +61,7 @@
-   --  { import = "plugins.ai.copilot" }, -- Configure AI prompt
- 
-   -- LSP / Autocompletion language Plugins
--  { import = "plugins.lsp.mason" },      -- LSP installer : NOTE THIS HAS TO BE THE FIRST LSP FILE TO LOAD!!!
-+  { import = "plugins.lsp.mason" },     -- LSP installer : NOTE THIS HAS TO BE THE FIRST LSP FILE TO LOAD!!!
-   { import = "plugins.lsp.none-ls" },    -- null-ls replacement
-   { import = "plugins.lsp.nvim-cmp" },   -- Auto Completion
-   { import = "plugins.lsp.debug" },      -- LSP Debug
-
-
+   Writing Main Lazy Load Config (/home/pete/.config/pvim/lua/plugins/lazy_load.lua)...
+   Verifying content of Main Lazy Load Config (/home/pete/.config/pvim/lua/plugins/lazy_load.lua)...
+   SUCCESS: Content of Main Lazy Load Config MATCHES expected.
 --- Automated File Content Verification Complete ---
+
 3. Checking for required background processes...
    Checking if ollama is running on port 11434...
    ollama is RUNNING.
