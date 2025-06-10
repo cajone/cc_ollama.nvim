@@ -13,6 +13,7 @@ CC_OLLAMA_FORK_DIR="$HOME/git/cc_ollama.nvim"
 CC_OLLAMA_ADAPTER_FILE="$CC_OLLAMA_FORK_DIR/lua/codecompanion/adapters/ollama.lua"
 CC_OLLAMA_TEST_SPEC="$CC_OLLAMA_FORK_DIR/tests/unit/adapters/ollama_adapter_spec.lua"
 CC_OLLAMA_TEST_HELPERS="$CC_OLLAMA_FORK_DIR/tests/unit/helpers.lua"
+PVIM_LAZY_LOAD_FILE="$PVIM_CONFIG_DIR/lua/plugins/lazy_load.lua" # Added this path
 AUTOMATION_REPORT="$CC_OLLAMA_FORK_DIR/automation_report.txt"
 
 # Clear previous report
@@ -24,6 +25,7 @@ mkdir -p "$(dirname "$CC_OLLAMA_MAIN_CONFIG")"
 mkdir -p "$(dirname "$CC_OLLAMA_ADAPTER_FILE")"
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_SPEC")"
 mkdir -p "$(dirname "$CC_OLLAMA_TEST_HELPERS")" # For tests/unit/helpers.lua
+mkdir -p "$(dirname "$PVIM_LAZY_LOAD_FILE")" # Ensure lazy_load.lua's directory exists
 echo "   Directories checked/created." | tee -a "$AUTOMATION_REPORT"
 
 # --- Expected File Contents (Embedded as Heredocs) ---
@@ -34,7 +36,7 @@ read -r -d '' EXPECTED_CC_OLLAMA_MAIN_CONFIG << 'EOF_CC_OLLAMA_MAIN_CONFIG'
 -- It is designed to be imported by your main Lazy.nvim configuration.
 
 -- IMPORTANT: NO 'require("codecompanion.*")' calls at this top level.
--- These modules become available only after CodeCompanion's 'setup' function runs.
+-- These modules become fully available only after CodeCompanion's 'setup' function runs.
 
 local M = {
   -- IMPORTANT: Point Lazy.nvim to your GitHub fork and specify the 'cleanup' branch.
@@ -160,9 +162,9 @@ local M = {
 
   -- Dependencies required by CodeCompanion
   dependencies = {
-    "nvim-lua/plenary.nvim",          -- Essential for async operations and HTTP requests
+    "nvim-lua/plenary.nvim",           -- Essential for async operations and HTTP requests
     "nvim-treesitter/nvim-treesitter", -- Used for syntax highlighting and parsing
-    "MeanderingProgrammer/render-markdown.nvim", -- Dependency for markdown rendering
+    -- "MeanderingProgrammer/render-markdown.nvim", -- REMOVED FROM HERE: Should be a top-level Lazy.nvim plugin
     {
       -- mcphub.nvim plugin definition
       "ravitemer/mcphub.nvim",
@@ -419,6 +421,7 @@ return {
     -- Other Ollama specific parameters can be added here if needed.
   },
 }
+return M
 EOF_OLLAMA_ADAPTER_FILE
 
 read -r -d '' EXPECTED_OLLAMA_TEST_SPEC << 'EOF_OLLAMA_ADAPTER_TEST_CODE'
@@ -509,6 +512,83 @@ end
 return helpers
 EOF_TEST_HELPERS_FILE
 
+# Added EXPECTED_LAZY_LOAD_FILE content
+read -r -d '' EXPECTED_LAZY_LOAD_FILE << 'EOF_LAZY_LOAD_FILE'
+-- OK first setup the plugin manager "Lazy"load
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+  vim.fn.system({
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git",
+    "--branch=stable", -- latest stable release
+    lazypath,
+  })
+end
+
+vim.opt.rtp:prepend(lazypath)
+
+require("lazy").setup({
+  checker = { -- turns off notifications
+    enable = true,
+    notify = false,
+  },
+  defaults = {
+    lazy = false,
+    version = false,
+  },
+
+  change_detection = { notify = false }, -- Stop reporting auto changes
+
+  -- Plugins used straight out the box
+  { "instant-markdown/vim-instant-markdown" },     -- Instant Markdown
+  { "vimwiki/vimwiki" },                         -- Vimwiki
+  "MeanderingProgrammer/render-markdown.nvim",     -- rendering Markdown required for Plenary (ADDED/MOVED HERE)
+  "nvim-telescope/telescope.nvim",                 -- ADDED HERE: Ensure Telescope is loaded early
+
+  { import = "plugins.obsidian" },             -- obsidian note taker
+  { import = "plugins.treesitter" },
+  --  { import = "plugins.arduino" },  -- Arduino front end
+  --  { import = "plugins.lint" },      -- Linter(s)
+
+  { import = "plugins.git" },            -- git related plugins
+  -- { import = "plugins.render-markdown" }, -- REMOVED: Redundant, now loaded directly
+  { import = "plugins.terminal" },         -- Toggle Terminal window
+  --  { import = "plugins.markdown-preview" }, -- Instant Markdown for neovim
+
+  -- UI based plugins
+  { import = "plugins.ui.colorscheme" }, -- ColorScheme
+  { import = "plugins.ui.dressing" },    -- Allows prompts and selections
+  { import = "plugins.ui.lualine" },      -- Status Line
+  { import = "plugins.ui.mini" },         -- Collections on notes, todo's
+  { import = "plugins.ui.telescope" },    -- Fuzzy file finder and many other things
+  { import = "plugins.ui.todo" },         -- Todo notes etc
+  --  { import = "plugins.ui.noice" },        -- system messages popup window
+  { import = "plugins.ui.conform" },      -- Formatting, linting
+  --  { import = "plugins.ui.fzf-lua" }, -- Formatting, linting
+
+  -- AI based plugins
+  { import = "plugins.ai.gp" },        -- Configure AI prompt
+  { import = "plugins.ai.mcphub" },    -- Configure AI prompt
+  --    { import = "plugins.ai.avante" }, -- AI frontend
+  { import = "plugins.ai.cc_ollama" }, -- AI frontend
+  --  { import = "plugins.ai.ai" }, -- Configure AI prompt
+  --  { import = "plugins.ai.copilot" }, -- Configure AI prompt
+
+  -- LSP / Autocompletion language Plugins
+  { import = "plugins.lsp.mason" },     -- LSP installer : NOTE THIS HAS TO BE THE FIRST LSP FILE TO LOAD!!!
+  { import = "plugins.lsp.none-ls" },    -- null-ls replacement
+  { import = "plugins.lsp.nvim-cmp" },   -- Auto Completion
+  { import = "plugins.lsp.debug" },      -- LSP Debug
+  { import = "plugins.lsp.lsp_config" }, -- LSP configuration
+
+  -- DAP Debugging code base
+  -- { "mfussenegger/nvim-dap" },
+  -- { "jbyuki/one-small-step-for-vimkind" },
+})
+EOF_LAZY_LOAD_FILE
+
 # --- Function to verify file content ---
 verify_file_content() {
     local file_path="$1"
@@ -538,6 +618,7 @@ verify_file_content "$CC_OLLAMA_MAIN_CONFIG" "$EXPECTED_CC_OLLAMA_MAIN_CONFIG" "
 verify_file_content "$CC_OLLAMA_ADAPTER_FILE" "$EXPECTED_OLLAMA_ADAPTER_FILE" "Ollama Adapter File"
 verify_file_content "$CC_OLLAMA_TEST_SPEC" "$EXPECTED_OLLAMA_TEST_SPEC" "Ollama Test Spec"
 verify_file_content "$CC_OLLAMA_TEST_HELPERS" "$EXPECTED_TEST_HELPERS_FILE" "Test Helpers File"
+verify_file_content "$PVIM_LAZY_LOAD_FILE" "$EXPECTED_LAZY_LOAD_FILE" "Main Lazy Load Config" # Added this verification
 
 echo "" | tee -a "$AUTOMATION_REPORT"
 echo "--- Automated File Content Verification Complete ---" | tee -a "$AUTOMATION_REPORT"
@@ -602,6 +683,7 @@ echo "5. Cleaning Lazy.nvim cache (installed plugins)..." | tee -a "$AUTOMATION_
 rm -rf "$HOME/.local/share/pvim/lazy/cajone_cc_ollama.nvim"
 rm -rf "$HOME/.local/share/pvim/lazy/ravitemer_mcphub.nvim"
 rm -rf "$HOME/.local/share/pvim/lazy/MeanderingProgrammer_render-markdown.nvim"
+rm -rf "$HOME/.local/share/pvim/lazy/nvim-telescope_telescope.nvim" # Added this to clear Telescope cache
 echo "   Lazy.nvim cache cleaned." | tee -a "$AUTOMATION_REPORT"
 echo "" | tee -a "$AUTOMATION_REPORT"
 

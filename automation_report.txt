@@ -3,16 +3,7 @@
 2. Verifying content of Main CodeCompanion Config (/home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua)...
    FAILURE: Content of Main CodeCompanion Config DOES NOT MATCH expected. Diff details below:
 --- /home/pete/.config/pvim/lua/plugins/ai/cc_ollama.lua	2025-06-10 14:26:37.304429773 +0100
-+++ /tmp/tmp.jNDZor7LMu	2025-06-10 14:27:18.108835349 +0100
-@@ -4,7 +4,7 @@
- -- It is designed to be imported by your main Lazy.nvim configuration.
- 
- -- IMPORTANT: NO 'require("codecompanion.*")' calls at this top level.
---- These modules become fully available only after CodeCompanion's 'setup' function runs.
-+-- These modules become available only after CodeCompanion's 'setup' function runs.
- 
- local M = {
-   -- IMPORTANT: Point Lazy.nvim to your GitHub fork and specify the 'cleanup' branch.
++++ /tmp/tmp.Z3Jpr0V7mv	2025-06-10 14:30:42.579363958 +0100
 @@ -49,7 +49,7 @@
        },
        -- Explicitly define the 'inline' strategy.
@@ -49,18 +40,6 @@
          },
        },
      },
-@@ -131,9 +130,9 @@
- 
-   -- Dependencies required by CodeCompanion
-   dependencies = {
--    "nvim-lua/plenary.nvim",           -- Essential for async operations and HTTP requests
-+    "nvim-lua/plenary.nvim",          -- Essential for async operations and HTTP requests
-     "nvim-treesitter/nvim-treesitter", -- Used for syntax highlighting and parsing
--    -- "MeanderingProgrammer/render-markdown.nvim", -- REMOVED FROM HERE: Should be a top-level Lazy.nvim plugin
-+    "MeanderingProgrammer/render-markdown.nvim", -- Dependency for markdown rendering
-     {
-       -- mcphub.nvim plugin definition
-       "ravitemer/mcphub.nvim",
 @@ -143,12 +142,12 @@
        build = "npm install", -- This build step is for mcphub.nvim itself.
        config = function()
@@ -82,7 +61,7 @@
 2. Verifying content of Ollama Adapter File (/home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua)...
    FAILURE: Content of Ollama Adapter File DOES NOT MATCH expected. Diff details below:
 --- /home/pete/git/cc_ollama.nvim/lua/codecompanion/adapters/ollama.lua	2025-06-10 11:14:18.227572829 +0100
-+++ /tmp/tmp.wvKRtF4hrB	2025-06-10 14:27:18.116835409 +0100
++++ /tmp/tmp.4Fjs0nKrx0	2025-06-10 14:30:42.586364011 +0100
 @@ -57,7 +57,7 @@
      for _, model in ipairs(json.models) do
        table.insert(models, model.name)
@@ -101,7 +80,7 @@
      tools = true, -- ENABLED: Set to true to allow tool usage
      vision = false,
    },
-@@ -193,7 +193,11 @@
+@@ -193,7 +193,12 @@
        type = "array",
        description = "One or more strings to stop generation at.",
      },
@@ -114,11 +93,12 @@
      -- Other Ollama specific parameters can be added here if needed.
    },
  }
++return M
 
 2. Verifying content of Ollama Test Spec (/home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua)...
    FAILURE: Content of Ollama Test Spec DOES NOT MATCH expected. Diff details below:
 --- /home/pete/git/cc_ollama.nvim/tests/unit/adapters/ollama_adapter_spec.lua	2025-06-10 12:22:59.637600279 +0100
-+++ /tmp/tmp.3bQJG7waxX	2025-06-10 14:27:18.122835454 +0100
++++ /tmp/tmp.kEzYPwTnhC	2025-06-10 14:30:42.593364063 +0100
 @@ -57,8 +57,7 @@
  
      -- Check if 'stream' is explicitly set to true in the 'opts' table
@@ -132,6 +112,63 @@
 
 2. Verifying content of Test Helpers File (/home/pete/git/cc_ollama.nvim/tests/unit/helpers.lua)...
    SUCCESS: Content of Test Helpers File MATCHES expected.
+2. Verifying content of Main Lazy Load Config (/home/pete/.config/pvim/lua/plugins/lazy_load.lua)...
+   FAILURE: Content of Main Lazy Load Config DOES NOT MATCH expected. Diff details below:
+--- /home/pete/.config/pvim/lua/plugins/lazy_load.lua	2025-06-10 14:30:15.474439568 +0100
++++ /tmp/tmp.oboYH3TGNY	2025-06-10 14:30:42.604364145 +0100
+@@ -26,30 +26,30 @@
+   change_detection = { notify = false }, -- Stop reporting auto changes
+ 
+   -- Plugins used straight out the box
+-  { "instant-markdown/vim-instant-markdown" }, -- Instant Markdown
+-  { "vimwiki/vimwiki" },                       -- Vimwiki
+-  "MeanderingProgrammer/render-markdown.nvim", -- ADDED/MOVED HERE: Ensure render-markdown is a top-level plugin
+-  "nvim-telescope/telescope.nvim",             -- ADDED HERE: Ensure Telescope is loaded early as a top-level plugin
++  { "instant-markdown/vim-instant-markdown" },     -- Instant Markdown
++  { "vimwiki/vimwiki" },                         -- Vimwiki
++  "MeanderingProgrammer/render-markdown.nvim",     -- rendering Markdown required for Plenary (ADDED/MOVED HERE)
++  "nvim-telescope/telescope.nvim",                 -- ADDED HERE: Ensure Telescope is loaded early
+ 
+   { import = "plugins.obsidian" },             -- obsidian note taker
+   { import = "plugins.treesitter" },
+   --  { import = "plugins.arduino" },  -- Arduino front end
+   --  { import = "plugins.lint" },      -- Linter(s)
+ 
+-  { import = "plugins.git" },      -- git related plugins
+-  -- { import = "plugins.render-markdown" }, -- REMOVED: Redundant import
+-  { import = "plugins.terminal" }, -- Toggle Terminal window
++  { import = "plugins.git" },            -- git related plugins
++  -- { import = "plugins.render-markdown" }, -- REMOVED: Redundant, now loaded directly
++  { import = "plugins.terminal" },         -- Toggle Terminal window
+   --  { import = "plugins.markdown-preview" }, -- Instant Markdown for neovim
+ 
+   -- UI based plugins
+   { import = "plugins.ui.colorscheme" }, -- ColorScheme
+   { import = "plugins.ui.dressing" },    -- Allows prompts and selections
+-  { import = "plugins.ui.lualine" },     -- Status Line
+-  { import = "plugins.ui.mini" },        -- Collections on notes, todo's
+-  { import = "plugins.ui.telescope" },   -- Fuzzy file finder and many other things
+-  { import = "plugins.ui.todo" },        -- Todo notes etc
++  { import = "plugins.ui.lualine" },      -- Status Line
++  { import = "plugins.ui.mini" },         -- Collections on notes, todo's
++  { import = "plugins.ui.telescope" },    -- Fuzzy file finder and many other things
++  { import = "plugins.ui.todo" },         -- Todo notes etc
+   --  { import = "plugins.ui.noice" },        -- system messages popup window
+-  { import = "plugins.ui.conform" },     -- Formatting, linting
++  { import = "plugins.ui.conform" },      -- Formatting, linting
+   --  { import = "plugins.ui.fzf-lua" }, -- Formatting, linting
+ 
+   -- AI based plugins
+@@ -61,7 +61,7 @@
+   --  { import = "plugins.ai.copilot" }, -- Configure AI prompt
+ 
+   -- LSP / Autocompletion language Plugins
+-  { import = "plugins.lsp.mason" },      -- LSP installer : NOTE THIS HAS TO BE THE FIRST LSP FILE TO LOAD!!!
++  { import = "plugins.lsp.mason" },     -- LSP installer : NOTE THIS HAS TO BE THE FIRST LSP FILE TO LOAD!!!
+   { import = "plugins.lsp.none-ls" },    -- null-ls replacement
+   { import = "plugins.lsp.nvim-cmp" },   -- Auto Completion
+   { import = "plugins.lsp.debug" },      -- LSP Debug
+
 
 --- Automated File Content Verification Complete ---
 3. Checking for required background processes...
