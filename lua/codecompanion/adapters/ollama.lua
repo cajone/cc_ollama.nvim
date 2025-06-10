@@ -47,7 +47,7 @@ local function get_models(self, opts)
 
   local ok, json = pcall(vim.json.decode, response.body)
   if not ok then
-    log:error("Could not parse the response from " .. url .. "/api/tags")
+    log:error("Could not parse the response from " .. url .. "/v1/models")
     return {}
   end
 
