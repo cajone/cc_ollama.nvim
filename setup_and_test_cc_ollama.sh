@@ -47,19 +47,18 @@ read -r -p "Press Enter to continue..."
 echo "6. Performing Git operations in $CC_OLLAMA_FORK_DIR..."
 cd "$CC_OLLAMA_FORK_DIR" || { echo "Error: Could not change to $CC_OLLAMA_FORK_DIR. Exiting."; exit 1; }
 
-# ADDED: Add the script itself to Git before committing
-git add "$(basename "$0")" # Add the script file itself
-git add lua/codecompanion/adapters/ollama.lua tests/unit/adapters/ollama_adapter_spec.lua tests/unit/helpers.lua
+# MODIFIED: Use git add -A to stage all changes, including untracked files
+git add -A # This stages all changes, including the script itself and any other modified/new files
 if [ $? -ne 0 ]; then echo "Error: git add failed. Check file paths/permissions."; exit 1; fi
 
 CURRENT_COMMIT_MESSAGE="Automated CodeCompanion Ollama Fix & Test Setup $(date +%Y-%m-%d_%H-%M-%S)"
 git commit -m "$CURRENT_COMMIT_MESSAGE"
 if [ $? -ne 0 ]; then
     echo "Warning: git commit failed (possibly no changes). Attempting to proceed."
-    if ! git status --porcelain | grep -q .; then
-        echo "   No changes to commit, skipping commit."
-    else
-        echo "   Git commit failed for other reasons. Please check manually."
+    # If no changes to commit, this is not an error, so we continue.
+    # Otherwise, it's a real error and we exit.
+    if ! git diff-index --quiet HEAD --; then
+        echo "   Git commit failed for reasons other than no changes. Please check manually."
         exit 1
     fi
 fi
